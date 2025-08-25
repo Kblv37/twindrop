@@ -216,18 +216,18 @@ body.theme-premium {
 
 .code-col {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   align-content: start;
 }
 
 .qr-col {
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
 .qr {
-  width: --qr-size;
-  height: --qr-size;
+  width: var(--qr-size);
+  height: var(--qr-size);
   background: rgba(255, 255, 255, 0.02);
   border: 1px dashed rgba(255, 255, 255, 0.14);
   border-radius: var(--radius-sm);
