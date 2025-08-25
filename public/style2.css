@@ -1,0 +1,258 @@
+:root {
+  /* Цвета */
+  --bg: #0b0c10;
+  --surface: #12141a;
+  --surface-2: #171a22;
+  --text: #e7ebf3;
+  --text-muted: #aab3c5;
+  --border: #252a34;
+  --accent: #6ea8fe;          /* меняй на брендовый */
+  --accent-2: #9b8cff;
+
+  /* Эффекты */
+  --shadow-1: 0 1px 2px rgba(0,0,0,.25), 0 1px 1px rgba(0,0,0,.1);
+  --shadow-2: 0 8px 30px rgba(0,0,0,.35);
+  --blur: 14px;
+
+  /* Типографика */
+  --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Noto Sans", Arial, "Apple Color Emoji","Segoe UI Emoji";
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --fs-1: clamp(28px, 3.2vw, 40px);
+  --fs-2: clamp(18px, 2vw, 22px);
+  --fs-3: clamp(14px, 1.6vw, 16px);
+  --fs-mono: clamp(24px, 3vw, 28px);
+
+  /* Пространство */
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 14px;
+  --space-4: 18px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-1: 10px;
+  --radius-2: 16px;
+  --radius-3: 22px;
+
+  /* Движение */
+  --ease-out: cubic-bezier(.16,1,.3,1);
+  --ease-in: cubic-bezier(.7,.1,.9,.3);
+  --dur-1: .18s;
+  --dur-2: .32s;
+  --dur-3: .56s;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f8fb;
+    --surface: #ffffff;
+    --surface-2: #f3f5fb;
+    --text: #0b1220;
+    --text-muted: #51607a;
+    --border: #e7eaf2;
+    --shadow-2: 0 8px 30px rgba(0,0,0,.08);
+  }
+}
+
+
+
+/* ====== БАЗА ====== */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background:
+    radial-gradient(1200px 800px at 10% 10%, rgba(110,168,254,.08), transparent 60%),
+    radial-gradient(900px 700px at 80% 20%, rgba(155,140,255,.08), transparent 60%),
+    linear-gradient(180deg, var(--bg), var(--bg));
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+
+/* ====== СКЕЛЕТ ====== */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(var(--blur));
+  background: color-mix(in oklab, var(--surface) 70%, transparent);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+}
+.header-inner {
+  max-width: 1120px; margin: 0 auto;
+  padding: calc(var(--space-4) + env(safe-area-inset-top)) var(--space-5);
+  display: flex; align-items: center; gap: var(--space-4);
+  justify-content: space-between;
+}
+.brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-weight: 700; letter-spacing: .2px;
+  font-size: 18px; padding: 8px 10px; border-radius: 12px;
+}
+.brand svg { width: 22px; height: 22px; }
+.nav { display: flex; gap: 8px; }
+.nav-link {
+  padding: 8px 12px; border-radius: 10px; color: var(--text-muted);
+  transition: color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+.nav-link:hover, .nav-link[aria-current="page"] {
+  color: var(--text); background: color-mix(in oklab, var(--surface-2) 80%, transparent);
+}
+
+.app-main { padding: 0 0 env(safe-area-inset-bottom); }
+.wrap {
+  max-width: 920px; margin: 0 auto; padding: var(--space-6) var(--space-5);
+  display: grid; gap: var(--space-6);
+}
+h1 {
+  margin: 0;
+  font-size: var(--fs-1); font-weight: 800; letter-spacing: -0.02em;
+}
+
+.section {
+  background: color-mix(in oklab, var(--surface) 90%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-2);
+  padding: var(--space-6);
+  animation: sectionIn var(--dur-3) var(--ease-out) both;
+}
+@keyframes sectionIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.row { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+
+.small { font-size: var(--fs-3); color: var(--text-muted); }
+
+.app-footer {
+  display: grid; place-items: center;
+  padding: var(--space-6);
+  color: var(--text-muted);
+}
+
+/* ====== КНОПКИ/ИНПУТЫ ====== */
+.btn {
+  appearance: none; border: none; cursor: pointer;
+  padding: 12px 16px; border-radius: 14px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 80%, #fff 5%), var(--accent));
+  color: #0a0e16; font-weight: 700;
+  box-shadow: 0 8px 20px color-mix(in oklab, var(--accent) 35%, transparent);
+  transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out), filter var(--dur-1);
+}
+.btn:hover { transform: translateY(-1px); filter: saturate(1.05); }
+.btn:active { transform: translateY(0); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; filter: grayscale(.2); }
+
+.input {
+  width: min(420px, 100%); height: 48px;
+  padding: 0 14px; border-radius: 12px; border: 1px dashed var(--border);
+  background: color-mix(in oklab, var(--surface-2) 85%, transparent);
+  color: var(--text); font-size: 16px; letter-spacing: .08em;
+  transition: border-color var(--dur-1), background var(--dur-1), box-shadow var(--dur-1);
+}
+.input:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
+  box-shadow: 0 0 0 6px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+/* ====== КОД И QR ====== */
+.code {
+  font-family: var(--mono); font-size: var(--fs-mono); font-weight: 800;
+  letter-spacing: .26em; padding: 10px 14px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--surface-2) 92%, transparent), transparent),
+    repeating-linear-gradient(90deg, transparent 0 28px, color-mix(in oklab, var(--border) 55%, transparent) 28px 29px);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,.04);
+  display: inline-block; user-select: all;
+  position: relative; overflow: hidden;
+}
+.code[data-fx="shimmer"]::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.12) 45%, transparent 60%);
+  transform: translateX(-120%); animation: shimmer 1.4s var(--ease-out) .2s 1 both;
+}
+@keyframes shimmer { to { transform: translateX(120%); } }
+
+.qr {
+  width: 220px; aspect-ratio: 1/1; display: grid; place-items: center;
+  padding: 14px; border-radius: 16px;
+  background: color-mix(in oklab, var(--surface-2) 88%, transparent);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255,255,255,.03);
+  animation: qrPulse 2.8s ease-in-out infinite;
+}
+@keyframes qrPulse {
+  0%, 100% { transform: scale(1); box-shadow: var(--shadow-1); }
+  50% { transform: scale(1.02); box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+}
+
+/* ====== ПРОГРЕСС ====== */
+.progress {
+  --h: 10px;
+  width: 100%; max-width: 520px; height: var(--h);
+  background: color-mix(in oklab, var(--surface-2) 80%, transparent);
+  border: 1px solid var(--border); border-radius: 999px; overflow: hidden;
+}
+.bar {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background-size: 200% 100%;
+  animation: barFlow 2s linear infinite paused;
+  transition: width .35s cubic-bezier(.2,.7,.2,1.02), filter var(--dur-1);
+}
+.progress[data-state="active"] .bar { animation-play-state: running; }
+@keyframes barFlow { 0% { background-position: 0 0; } 100% { background-position: -200% 0; } }
+
+/* ====== НОТИФИКАЦИИ ====== */
+.notice {
+  border: 1px solid color-mix(in oklab, var(--accent) 25%, var(--border));
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface-2));
+  color: color-mix(in oklab, var(--accent) 80%, var(--text));
+  border-radius: var(--radius-2);
+}
+
+/* ====== ДРОПЗОНА ====== */
+.dropzone {
+  display: grid; place-items: center; gap: 10px;
+  min-height: 140px; padding: var(--space-6);
+  border: 2px dashed color-mix(in oklab, var(--border) 85%, transparent);
+  background: color-mix(in oklab, var(--surface-2) 85%, transparent);
+  border-radius: var(--radius-2);
+  transition: border-color var(--dur-1), background var(--dur-1), transform var(--dur-1);
+}
+.dropzone[data-hover="1"] {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  background: color-mix(in oklab, var(--accent) 10%, var(--surface-2));
+  transform: translateY(-1px);
+}
+
+/* ====== ФОКУС И ДОСТУПНОСТЬ ====== */
+:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* ====== REDUCED MOTION ====== */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition-duration: .01ms !important; }
+}
+
+/* ====== МЕЛОЧИ ====== */
+.muted { color: var(--text-muted); }
+.tooltip {
+  position: absolute; top: -34px; right: 0;
+  background: var(--surface-2); border: 1px solid var(--border);
+  padding: 6px 10px; border-radius: 10px; font-size: 12px; color: var(--text);
+  opacity: 0; transform: translateY(6px); pointer-events: none;
+  transition: opacity var(--dur-1), transform var(--dur-1);
+}
+.btn[data-copied="1"] + .tooltip { opacity: 1; transform: translateY(0); }
