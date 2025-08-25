@@ -2,28 +2,38 @@
 const path = require('path');
 const express = require('express');
 const http = require('http');
-const { v4: uuidv4 } = require('uuid'); // для генерации uuid
+const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 
 const app = express();
 
-// Middleware
+// --- Middleware ---
 app.use(cors({
-    origin: 'https://twindrop.netlify.app', // для теста можно '*'
+    origin: [
+        'https://twindrop.netlify.app',
+        'http://localhost:5173', // для тестов
+        'http://localhost:3000'
+    ],
     methods: ['GET', 'POST']
 }));
 app.use(express.json());
 
-// Статика (локально — public/)
+// --- favicon, чтобы убрать 404 ---
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end(); // пустой ответ
+});
+
+// --- статика (локально public/) ---
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
 
-// --- Хранилище сигналов (in-memory) ---
+// --- In-memory хранилище сессий ---
 const sessions = new Map(); // uuid -> { offer, answer }
 
-// Создать новую сессию и вернуть UUID
-app.get('/api/new-session', (req, res) => {
+// --- API ---
+// Создать новую комнату (session/room)
+app.get('/api/new-room', (req, res) => {
     const id = uuidv4();
     sessions.set(id, {});
     res.json({ id });
@@ -33,7 +43,7 @@ app.get('/api/new-session', (req, res) => {
 app.post('/api/:id/offer', (req, res) => {
     const { id } = req.params;
     const { offer } = req.body;
-    if (!sessions.has(id)) return res.status(404).json({ error: 'Session not found' });
+    if (!sessions.has(id)) return res.status(404).json({ error: 'Room not found' });
 
     sessions.get(id).offer = offer;
     res.json({ ok: true });
@@ -52,7 +62,7 @@ app.get('/api/:id/offer', (req, res) => {
 app.post('/api/:id/answer', (req, res) => {
     const { id } = req.params;
     const { answer } = req.body;
-    if (!sessions.has(id)) return res.status(404).json({ error: 'Session not found' });
+    if (!sessions.has(id)) return res.status(404).json({ error: 'Room not found' });
 
     sessions.get(id).answer = answer;
     res.json({ ok: true });
@@ -67,6 +77,6 @@ app.get('/api/:id/answer', (req, res) => {
     res.json({ answer: session.answer });
 });
 
-// Запуск
+// --- Запуск ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Signaling server running on port ${PORT}`));
