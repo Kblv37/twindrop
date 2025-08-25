@@ -21,14 +21,9 @@ const socket = io(SOCKET_URL);
     let peer;
     let code;
 
-    // Генерация 6-значного кода
-    function generateRoomCode() {
-        return Math.floor(100000 + Math.random() * 900000).toString();
-    }
-
-    // Генерация QR-кода с публичным URL Render
+    // Генерация QR-кода с фронта (Netlify)
     function generateRoomQR(code) {
-        const url = `${SOCKET_URL}/send.html?room=${code}`;
+        const url = `${window.location.origin}/send.html?room=${code}`;
         qrContainer.innerHTML = '';
         new QRCode(qrContainer, {
             text: url,
@@ -46,7 +41,7 @@ const socket = io(SOCKET_URL);
         setStatus(statusEl, 'Подключаемся к комнате…');
         socket.emit('join-room', { code });
 
-        // показываем QR-код для сканирования
+        // Показываем QR-код для сканирования
         generateRoomQR(code);
     }
 
@@ -93,8 +88,10 @@ const socket = io(SOCKET_URL);
         const file = fileInput.files[0];
         if (!file) return;
 
+        // 1) Отправляем метаданные файла
         peer.channel().send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
 
+        // 2) Отправка файла чанками
         const reader = file.stream().getReader();
         let sent = 0;
 

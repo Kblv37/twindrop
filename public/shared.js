@@ -1,6 +1,4 @@
 // Общие утилиты для send/receive
-const socket = io();
-
 function $(sel) { return document.querySelector(sel); }
 function setStatus(el, text) {
     el.style.display = text ? 'block' : 'none';

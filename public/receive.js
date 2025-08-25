@@ -1,4 +1,4 @@
-// receive.js — фронт для получателя с подключением к Render
+// socket подключаем к Render
 const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
@@ -9,25 +9,24 @@ const socket = io(SOCKET_URL);
     const recvBar = $('#recvBar');
     const recvText = $('#recvText');
     const downloads = $('#downloads');
-    const qrContainer = $('#qr'); // элемент для QR-кода
+    const qrContainer = $('#qr');
 
-    // 1) Запрашиваем новый код комнаты у сервера
+    // Получаем код комнаты от сервера
     const r = await fetch(`${SOCKET_URL}/api/new-room`);
     const { code } = await r.json();
     codeEl.textContent = code;
 
-    // 2) Рисуем QR, который ведёт на страницу отправителя с предзаполненным кодом
-    const url = `${SOCKET_URL}/send.html?room=${code}`;
+    // QR ведёт на фронт (Netlify)
+    const url = `${window.location.origin}/send.html?room=${code}`;
     new QRCode(qrContainer, { text: url, width: 200, height: 200 });
 
-    // 3) Копирование кода
+    // Копирование кода
     copyBtn.onclick = async () => {
         await navigator.clipboard.writeText(code);
         copyBtn.textContent = 'Скопировано!';
         setTimeout(() => copyBtn.textContent = 'Скопировать', 1200);
     };
 
-    // 4) Подключаемся к комнате через сокет
     socket.emit('join-room', { code });
 
     let fileChunks = [];
@@ -60,7 +59,6 @@ const socket = io(SOCKET_URL);
     socket.on('peer-joined', () => {
         setStatus(statusEl, 'Отправитель подключился. Устанавливаем P2P…');
 
-        // получатель не инициатор
         peer = createPeer({
             initiator: false,
             onSignal: (data) => socket.emit('signal', { code, data }),
