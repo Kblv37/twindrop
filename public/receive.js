@@ -27,6 +27,7 @@ const socket = io(SOCKET_URL);
         setTimeout(() => copyBtn.textContent = 'Скопировать', 1200);
     };
 
+    // Входим в комнату
     socket.emit('join-room', { code });
 
     let fileChunks = [];
@@ -77,10 +78,12 @@ const socket = io(SOCKET_URL);
                             expectedSize = meta.size || 0;
                             recvText.textContent = `Получение: ${fileName}`;
                             setBar(recvBar, 0);
+                            fileChunks = [];
                             return;
                         }
                     } catch {}
                 }
+
                 if (data instanceof ArrayBuffer) {
                     fileChunks.push(data);
                     saveIfComplete();
@@ -103,5 +106,9 @@ const socket = io(SOCKET_URL);
         if (size < 2) setStatus(statusEl, 'Ждём отправителя…');
     });
 
-    socket.on('peer-left', () => setStatus(statusEl, 'Отправитель отключился.'));
+    socket.on('peer-left', () => {
+        setStatus(statusEl, 'Отправитель отключился.');
+        peer?.destroy?.();
+        peer = null;
+    });
 })();

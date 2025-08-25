@@ -4,8 +4,10 @@ const express = require('express');
 const http = require('http');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
 
 // --- Middleware ---
 app.use(cors({
@@ -20,26 +22,34 @@ app.use(express.json());
 
 // --- favicon, чтобы убрать 404 ---
 app.get('/favicon.ico', (req, res) => {
-    res.status(204).end(); // пустой ответ
+    res.status(204).end();
 });
 
-// --- статика (локально public/) ---
+// --- статика ---
 app.use(express.static(path.join(__dirname, 'public')));
 
-const server = http.createServer(app);
+// --- socket.io ---
+const io = new Server(server, {
+    cors: {
+        origin: [
+            'https://twindrop.netlify.app',
+            'http://localhost:5173',
+            'http://localhost:3000'
+        ],
+        methods: ['GET', 'POST']
+    }
+});
 
-// --- In-memory хранилище сессий ---
+// --- In-memory хранилище сессий (для REST) ---
 const sessions = new Map(); // uuid -> { offer, answer }
 
-// --- API ---
-// Создать новую комнату (session/room)
+// --- API (как fallback) ---
 app.get('/api/new-room', (req, res) => {
     const id = uuidv4();
     sessions.set(id, {});
     res.json({ id });
 });
 
-// Отправитель кладёт offer
 app.post('/api/:id/offer', (req, res) => {
     const { id } = req.params;
     const { offer } = req.body;
@@ -49,7 +59,6 @@ app.post('/api/:id/offer', (req, res) => {
     res.json({ ok: true });
 });
 
-// Получатель забирает offer
 app.get('/api/:id/offer', (req, res) => {
     const { id } = req.params;
     const session = sessions.get(id);
@@ -58,7 +67,6 @@ app.get('/api/:id/offer', (req, res) => {
     res.json({ offer: session.offer });
 });
 
-// Получатель кладёт answer
 app.post('/api/:id/answer', (req, res) => {
     const { id } = req.params;
     const { answer } = req.body;
@@ -68,7 +76,6 @@ app.post('/api/:id/answer', (req, res) => {
     res.json({ ok: true });
 });
 
-// Отправитель забирает answer
 app.get('/api/:id/answer', (req, res) => {
     const { id } = req.params;
     const session = sessions.get(id);
@@ -77,6 +84,38 @@ app.get('/api/:id/answer', (req, res) => {
     res.json({ answer: session.answer });
 });
 
+// --- socket.io signaling + data transfer ---
+io.on('connection', (socket) => {
+    console.log('🔌 client connected:', socket.id);
+
+    // Вход в комнату
+    socket.on('join-room', (roomId) => {
+        socket.join(roomId);
+        console.log(`👤 ${socket.id} joined room ${roomId}`);
+        socket.to(roomId).emit('peer-joined', socket.id);
+    });
+
+    // Передача сигналинга (offer/answer/candidate)
+    socket.on('signal', ({ roomId, data }) => {
+        socket.to(roomId).emit('signal', { from: socket.id, data });
+    });
+
+    // Чанки файла
+    socket.on('file-chunk', ({ roomId, chunk }) => {
+        // chunk — это ArrayBuffer или Uint8Array
+        socket.to(roomId).emit('file-chunk', { from: socket.id, chunk });
+    });
+
+    // Когда файл закончен
+    socket.on('file-end', ({ roomId, fileName }) => {
+        socket.to(roomId).emit('file-end', { from: socket.id, fileName });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('❌ client disconnected:', socket.id);
+    });
+});
+
 // --- Запуск ---
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Signaling server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Signaling server running on port ${PORT}`));

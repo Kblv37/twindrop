@@ -23,7 +23,7 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
     if (initiator) {
         channel = pc.createDataChannel('file', {
             ordered: true,
-            maxRetransmits: 30 // ограничение для надёжности
+            maxRetransmits: 30
         });
         hookupChannel();
     } else {
@@ -45,7 +45,6 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
         if (ev.candidate) onSignal({ candidate: ev.candidate });
     };
 
-    // Более надёжное отслеживание статуса
     pc.oniceconnectionstatechange = () => {
         const st = pc.iceConnectionState;
         if (st === 'disconnected' || st === 'failed' || st === 'closed') {
@@ -82,6 +81,74 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
     if (initiator) startNegotiation();
 
     return { pc, channel: () => channel, handleSignal };
+}
+
+// Чанковая отправка файла
+async function sendFile(file, channel, { chunkSize = 64 * 1024, onProgress } = {}) {
+    return new Promise((resolve, reject) => {
+        let offset = 0;
+        const reader = new FileReader();
+
+        // Отправляем метаданные
+        channel.send(JSON.stringify({
+            fileInfo: { name: file.name, size: file.size, type: file.type }
+        }));
+
+        reader.onload = (e) => {
+            channel.send(e.target.result);
+            offset += e.target.result.byteLength;
+            if (onProgress) onProgress(offset / file.size);
+
+            if (offset < file.size) {
+                readSlice(offset);
+            } else {
+                channel.send(JSON.stringify({ done: true }));
+                resolve();
+            }
+        };
+
+        reader.onerror = (err) => reject(err);
+
+        function readSlice(o) {
+            const slice = file.slice(o, o + chunkSize);
+            reader.readAsArrayBuffer(slice);
+        }
+
+        readSlice(0);
+    });
+}
+
+// Приём файла чанками
+function createFileReceiver({ onFileStart, onFileProgress, onFileComplete }) {
+    let incomingFile = null;
+    let receivedChunks = [];
+    let receivedBytes = 0;
+
+    return function handleData(data) {
+        if (typeof data === "string") {
+            try {
+                const msg = JSON.parse(data);
+                if (msg.fileInfo) {
+                    incomingFile = msg.fileInfo;
+                    receivedChunks = [];
+                    receivedBytes = 0;
+                    onFileStart && onFileStart(incomingFile);
+                } else if (msg.done) {
+                    const blob = new Blob(receivedChunks, { type: incomingFile.type });
+                    onFileComplete && onFileComplete(blob, incomingFile);
+                    incomingFile = null;
+                }
+            } catch (e) {
+                console.warn("Non-JSON text message:", data);
+            }
+        } else if (data instanceof ArrayBuffer) {
+            receivedChunks.push(new Uint8Array(data));
+            receivedBytes += data.byteLength;
+            if (incomingFile) {
+                onFileProgress && onFileProgress(receivedBytes / incomingFile.size);
+            }
+        }
+    };
 }
 
 function parseQuery() {

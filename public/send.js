@@ -19,9 +19,9 @@ const socket = io(SOCKET_URL);
     let peer;
     let code;
 
-    // Генерация QR-кода с публичным URL Render
+    // QR-код для получателя
     function generateRoomQR(code) {
-        const url = `${SOCKET_URL}/receive.html?room=${code}`; // исправлено
+        const url = `${SOCKET_URL}/receive.html?room=${code}`;
         qrContainer.innerHTML = '';
         new QRCode(qrContainer, {
             text: url,
@@ -38,7 +38,6 @@ const socket = io(SOCKET_URL);
         }
         setStatus(statusEl, 'Подключаемся к комнате…');
         socket.emit('join-room', { code });
-
         generateRoomQR(code);
     }
 
@@ -46,7 +45,7 @@ const socket = io(SOCKET_URL);
     codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
 
     // События от сервера
-    socket.on('peer-joined', () => { /* первый участник игнорирует */ });
+    socket.on('peer-joined', () => { /* игнорируем для инициатора */ });
 
     socket.on('room-size', ({ size }) => {
         if (!code) return;
@@ -55,7 +54,6 @@ const socket = io(SOCKET_URL);
         } else if (size === 2 && !peer) {
             setStatus(statusEl, 'Получатель на месте. Устанавливаем P2P…');
 
-            // создаём P2P соединение
             peer = createPeer({
                 initiator: true,
                 iceServers: [
@@ -78,11 +76,12 @@ const socket = io(SOCKET_URL);
     socket.on('signal', (data) => { if (peer) peer.handleSignal(data); });
     socket.on('room-full', () => setStatus(statusEl, 'Комната уже занята двумя участниками.'));
 
-    // Управление файлом
+    // Включаем кнопку, если выбран файл
     fileInput.addEventListener('change', () => {
         sendBtn.disabled = !(fileInput.files && fileInput.files.length);
     });
 
+    // Отправка файла чанками
     sendBtn.onclick = async () => {
         if (!peer || !peer.channel() || peer.channel().readyState !== 'open') {
             setStatus(statusEl, 'Канал ещё не готов.');
@@ -91,12 +90,12 @@ const socket = io(SOCKET_URL);
         const file = fileInput.files[0];
         if (!file) return;
 
-        // Отправляем метаданные
+        // метаданные
         peer.channel().send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
 
-        const chunkSize = 64 * 1024; // 64KB
         const reader = file.stream().getReader();
         let sent = 0;
+        const chunkSize = 64 * 1024; // 64KB (можно уменьшить до 16KB, если нужно)
 
         setBar(sendBar, 0);
         sendText.textContent = `Отправка: ${file.name}`;
@@ -106,16 +105,19 @@ const socket = io(SOCKET_URL);
                 const { value, done } = await reader.read();
                 if (done) break;
 
-                // делим на чанки, если слишком большой кусок
-                for (let offset = 0; offset < value.byteLength; offset += chunkSize) {
+                let offset = 0;
+                while (offset < value.byteLength) {
                     const chunk = value.buffer.slice(offset, offset + chunkSize);
+                    offset += chunkSize;
+
                     await waitForBufferLow(peer.channel());
                     peer.channel().send(chunk);
                 }
 
                 sent += value.byteLength;
                 setBar(sendBar, sent / file.size);
-                sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+                sendText.textContent =
+                    `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
             }
 
             setStatus(statusEl, 'Файл успешно отправлен.');
@@ -125,10 +127,12 @@ const socket = io(SOCKET_URL);
         }
     };
 
+    // контроль буфера
     function waitForBufferLow(dc) {
         return new Promise((resolve) => {
-            const threshold = 1 * 1024 * 1024;
+            const threshold = 512 * 1024; // 512KB запас
             if (dc.bufferedAmount < threshold) return resolve();
+
             const check = () => {
                 if (dc.bufferedAmount < threshold) {
                     dc.removeEventListener('bufferedamountlow', check);
@@ -137,7 +141,7 @@ const socket = io(SOCKET_URL);
             };
             try { dc.bufferedAmountLowThreshold = threshold; } catch { }
             dc.addEventListener('bufferedamountlow', check);
-            setTimeout(check, 50);
+            setTimeout(check, 50); // страховка
         });
     }
 })();
