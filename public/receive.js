@@ -1,5 +1,5 @@
 // receive.js — фронт для получателя с подключением к Render
-const SOCKET_URL = 'https://twindrop-server.onrender.com'; // вставь сюда свой Render URL
+const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
 (async function () {

@@ -1,5 +1,5 @@
 // send.js — фронт для отправителя с подключением к Render
-const SOCKET_URL = 'https://twindrop-server.onrender.com'; // сюда твой Render URL
+const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
 (function () {
