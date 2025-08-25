@@ -15,13 +15,16 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
     const pc = new RTCPeerConnection({
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }, // валидный второй STUN
+            { urls: 'stun:stun1.l.google.com:19302' },
         ]
     });
 
     let channel;
     if (initiator) {
-        channel = pc.createDataChannel('file');
+        channel = pc.createDataChannel('file', {
+            ordered: true,
+            maxRetransmits: 30 // ограничение для надёжности
+        });
         hookupChannel();
     } else {
         pc.ondatachannel = (ev) => { channel = ev.channel; hookupChannel(); };
@@ -31,7 +34,10 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
         channel.binaryType = 'arraybuffer';
         channel.onopen = () => onConnect && onConnect();
         channel.onmessage = (ev) => onData && onData(ev.data);
-        channel.onclose = () => onClose && onClose();
+        channel.onclose = () => {
+            onClose && onClose();
+            if (pc.signalingState !== "closed") pc.close();
+        };
         channel.onerror = (e) => onError && onError(e);
     }
 
@@ -39,9 +45,12 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
         if (ev.candidate) onSignal({ candidate: ev.candidate });
     };
 
-    pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+    // Более надёжное отслеживание статуса
+    pc.oniceconnectionstatechange = () => {
+        const st = pc.iceConnectionState;
+        if (st === 'disconnected' || st === 'failed' || st === 'closed') {
             onClose && onClose();
+            if (pc.signalingState !== "closed") pc.close();
         }
     };
 
@@ -52,17 +61,21 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
     }
 
     async function handleSignal(data) {
-        if (data.candidate) {
-            try { await pc.addIceCandidate(data.candidate); } catch { }
-            return;
-        }
-        if (data.type === 'offer') {
-            await pc.setRemoteDescription(new RTCSessionDescription(data));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            onSignal(answer);
-        } else if (data.type === 'answer') {
-            await pc.setRemoteDescription(new RTCSessionDescription(data));
+        try {
+            if (data.candidate) {
+                await pc.addIceCandidate(data.candidate);
+                return;
+            }
+            if (data.type === 'offer') {
+                await pc.setRemoteDescription(new RTCSessionDescription(data));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                onSignal(answer);
+            } else if (data.type === 'answer') {
+                await pc.setRemoteDescription(new RTCSessionDescription(data));
+            }
+        } catch (e) {
+            console.warn("Signal handling error:", e);
         }
     }
 

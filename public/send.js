@@ -21,7 +21,7 @@ const socket = io(SOCKET_URL);
 
     // Генерация QR-кода с публичным URL Render
     function generateRoomQR(code) {
-        const url = `${SOCKET_URL}/send.html?room=${code}`;
+        const url = `${SOCKET_URL}/receive.html?room=${code}`; // исправлено
         qrContainer.innerHTML = '';
         new QRCode(qrContainer, {
             text: url,
@@ -91,25 +91,38 @@ const socket = io(SOCKET_URL);
         const file = fileInput.files[0];
         if (!file) return;
 
+        // Отправляем метаданные
         peer.channel().send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
 
+        const chunkSize = 64 * 1024; // 64KB
         const reader = file.stream().getReader();
         let sent = 0;
 
         setBar(sendBar, 0);
         sendText.textContent = `Отправка: ${file.name}`;
 
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            await waitForBufferLow(peer.channel());
-            peer.channel().send(value.buffer);
-            sent += value.byteLength;
-            setBar(sendBar, sent / file.size);
-            sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
-        }
+        try {
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
 
-        setStatus(statusEl, 'Файл отправлен.');
+                // делим на чанки, если слишком большой кусок
+                for (let offset = 0; offset < value.byteLength; offset += chunkSize) {
+                    const chunk = value.buffer.slice(offset, offset + chunkSize);
+                    await waitForBufferLow(peer.channel());
+                    peer.channel().send(chunk);
+                }
+
+                sent += value.byteLength;
+                setBar(sendBar, sent / file.size);
+                sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            }
+
+            setStatus(statusEl, 'Файл успешно отправлен.');
+            sendBtn.disabled = true;
+        } catch (err) {
+            setStatus(statusEl, 'Ошибка при передаче: ' + err.message);
+        }
     };
 
     function waitForBufferLow(dc) {

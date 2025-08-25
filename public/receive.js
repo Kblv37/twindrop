@@ -48,7 +48,8 @@ const socket = io(SOCKET_URL);
             a.textContent = `Скачать: ${fileName} (${(expectedSize / 1024 / 1024).toFixed(2)} MB)`;
             a.className = 'btn';
             downloads.appendChild(a);
-            setStatus(statusEl, 'Передача завершена.');
+
+            setStatus(statusEl, 'Передача завершена ✅');
             fileChunks = [];
             expectedSize = 0;
         }
@@ -66,7 +67,7 @@ const socket = io(SOCKET_URL);
                 { urls: 'stun:stun1.l.google.com:19302' }
             ],
             onSignal: (data) => socket.emit('signal', { code, data }),
-            onConnect: () => setStatus(statusEl, 'P2P соединение установлено. Ожидаем файл…'),
+            onConnect: () => setStatus(statusEl, 'P2P соединение установлено. Ждём файл…'),
             onData: (data) => {
                 if (typeof data === 'string') {
                     try {
@@ -85,13 +86,17 @@ const socket = io(SOCKET_URL);
                     saveIfComplete();
                 }
             },
-            onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
-            onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
+            onClose: () => setStatus(statusEl, 'Соединение закрыто ❌'),
+            onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + (e?.message || e))
         });
     });
 
     socket.on('signal', (data) => {
-        if (peer) peer.handleSignal(data);
+        if (peer) {
+            peer.handleSignal(data);
+        } else {
+            console.warn('Сигнал пришёл до создания peer');
+        }
     });
 
     socket.on('room-size', ({ size }) => {
