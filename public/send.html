@@ -12,35 +12,55 @@
 </head>
 
 <body>
-    <div class="wrap">
-        <h1>Отправить файл</h1>
 
-        <div class="section">
-            <div class="row">
-                <input id="codeInput" class="input" placeholder="6-значный код" maxlength="6" />
-                <button id="joinBtn" class="btn">Подключиться</button>
-            </div>
-            <div class="small" style="margin-top:8px">Или откройте эту страницу по QR — код подставится сам.</div>
+    <header class="app-header" role="banner" aria-label="Навигация P2P Share">
+        <div class="header-inner">
+            <a class="brand" href="/">P2P Share</a>
+            <nav class="nav">
+                <a class="nav-link" href="/receive">Получить</a>
+                <a class="nav-link" href="/send">Отправить</a>
+            </nav>
         </div>
+    </header>
 
-        <div id="sendUI" class="section" style="display:none">
-            <div class="row">
-                <input type="file" id="file" />
-                <button id="sendBtn" class="btn" disabled>Отправить</button>
+    <main class="app-main" role="main">
+
+        <div class="wrap">
+            <h1>Отправить файл</h1>
+
+            <div class="section">
+                <div class="row">
+                    <input id="codeInput" class="input" placeholder="6-значный код" maxlength="6" />
+                    <button id="joinBtn" class="btn">Подключиться</button>
+                </div>
+                <div class="small" style="margin-top:8px">Или откройте эту страницу по QR — код подставится сам.</div>
             </div>
-            <div class="row" style="margin-top:12px">
-                <div style="flex:1">
-                    <div><strong>Передача:</strong></div>
-                    <div class="progress" style="margin-top:8px">
-                        <div id="sendBar" class="bar"></div>
+
+            <div id="sendUI" class="section" style="display:none">
+                <div class="row">
+                    <input type="file" id="file" />
+                    <button id="sendBtn" class="btn" disabled>Отправить</button>
+                </div>
+                <div class="row" style="margin-top:12px">
+                    <div style="flex:1">
+                        <div><strong>Передача:</strong></div>
+                        <div class="progress" style="margin-top:8px">
+                            <div id="sendBar" class="bar"></div>
+                        </div>
+                        <div id="sendText" class="small">Ожидание подключения получателя…</div>
                     </div>
-                    <div id="sendText" class="small">Ожидание подключения получателя…</div>
                 </div>
             </div>
+
+            <div id="status" class="section notice" style="display:none"></div>
         </div>
 
-        <div id="status" class="section notice" style="display:none"></div>
-    </div>
+    </main>
+
+    <footer class="app-footer" role="contentinfo">
+        <span class="muted">Соединение P2P через WebRTC. Сервер видит только сигналы.</span>
+    </footer>
+
 </body>
 
 </html>
