@@ -2,120 +2,91 @@
 const path = require('path');
 const express = require('express');
 const http = require('http');
-const { v4: uuidv4 } = require('uuid');
-const cors = require('cors');
 const { Server } = require('socket.io');
+const cors = require('cors');
 
 const app = express();
-const server = http.createServer(app);
 
-// --- Middleware ---
+// Разрешаем CORS для фронтенда (Netlify)
 app.use(cors({
-    origin: [
-        'https://twindrop.netlify.app',
-        'http://localhost:5173', // для тестов
-        'http://localhost:3000'
-    ],
+    origin: 'https://twindrop.netlify.app', // можно заменить на '*' для тестов
     methods: ['GET', 'POST']
 }));
-app.use(express.json());
 
-// --- favicon, чтобы убрать 404 ---
-app.get('/favicon.ico', (req, res) => {
-    res.status(204).end();
-});
-
-// --- статика ---
+// Статика (для локального фронтенда, если нужно)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- socket.io ---
+const server = http.createServer(app);
+
 const io = new Server(server, {
     cors: {
-        origin: [
-            'https://twindrop.netlify.app',
-            'http://localhost:5173',
-            'http://localhost:3000'
-        ],
+        origin: 'https://twindrop.netlify.app', // фронтенд
         methods: ['GET', 'POST']
     }
 });
 
-// --- In-memory хранилище сессий (для REST) ---
-const sessions = new Map(); // uuid -> { offer, answer }
+// Память для комнат: code -> Set(socketId)
+const rooms = new Map();
 
-// --- API (как fallback) ---
+// Генерация 6-значного кода комнаты
+function genCode() {
+    return Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+}
+
+// REST API: получение нового кода комнаты
 app.get('/api/new-room', (req, res) => {
-    const id = uuidv4();
-    sessions.set(id, {});
-    res.json({ id });
+    let code;
+    do {
+        code = genCode();
+    } while (rooms.has(code));
+    rooms.set(code, new Set());
+    res.json({ code });
 });
 
-app.post('/api/:id/offer', (req, res) => {
-    const { id } = req.params;
-    const { offer } = req.body;
-    if (!sessions.has(id)) return res.status(404).json({ error: 'Room not found' });
-
-    sessions.get(id).offer = offer;
-    res.json({ ok: true });
-});
-
-app.get('/api/:id/offer', (req, res) => {
-    const { id } = req.params;
-    const session = sessions.get(id);
-    if (!session || !session.offer) return res.status(404).json({ error: 'Offer not found' });
-
-    res.json({ offer: session.offer });
-});
-
-app.post('/api/:id/answer', (req, res) => {
-    const { id } = req.params;
-    const { answer } = req.body;
-    if (!sessions.has(id)) return res.status(404).json({ error: 'Room not found' });
-
-    sessions.get(id).answer = answer;
-    res.json({ ok: true });
-});
-
-app.get('/api/:id/answer', (req, res) => {
-    const { id } = req.params;
-    const session = sessions.get(id);
-    if (!session || !session.answer) return res.status(404).json({ error: 'Answer not found' });
-
-    res.json({ answer: session.answer });
-});
-
-// --- socket.io signaling + data transfer ---
+// Socket.IO события
 io.on('connection', (socket) => {
-    console.log('🔌 client connected:', socket.id);
+    socket.on('join-room', ({ code }) => {
+        if (!code) return;
 
-    // Вход в комнату
-    socket.on('join-room', (roomId) => {
-        socket.join(roomId);
-        console.log(`👤 ${socket.id} joined room ${roomId}`);
-        socket.to(roomId).emit('peer-joined', socket.id);
+        if (!rooms.has(code)) rooms.set(code, new Set());
+        const set = rooms.get(code);
+
+        // ограничение до 2 участников
+        if (set.size >= 2) {
+            socket.emit('room-full');
+            return;
+        }
+
+        set.add(socket.id);
+        socket.join(code);
+        socket.data.code = code;
+
+        // уведомляем второго участника
+        socket.to(code).emit('peer-joined');
+
+        // отправляем размер комнаты всем участникам
+        io.to(code).emit('room-size', { size: set.size });
     });
 
-    // Передача сигналинга (offer/answer/candidate)
-    socket.on('signal', ({ roomId, data }) => {
-        socket.to(roomId).emit('signal', { from: socket.id, data });
-    });
-
-    // Чанки файла
-    socket.on('file-chunk', ({ roomId, chunk }) => {
-        // chunk — это ArrayBuffer или Uint8Array
-        socket.to(roomId).emit('file-chunk', { from: socket.id, chunk });
-    });
-
-    // Когда файл закончен
-    socket.on('file-end', ({ roomId, fileName }) => {
-        socket.to(roomId).emit('file-end', { from: socket.id, fileName });
+    socket.on('signal', ({ code, data }) => {
+        if (!code) return;
+        socket.to(code).emit('signal', data);
     });
 
     socket.on('disconnect', () => {
-        console.log('❌ client disconnected:', socket.id);
+        const code = socket.data.code;
+        if (!code) return;
+        const set = rooms.get(code);
+        if (!set) return;
+        set.delete(socket.id);
+
+        // уведомляем оставшегося участника
+        socket.to(code).emit('peer-left');
+
+        if (set.size === 0) rooms.delete(code);
+        else io.to(code).emit('room-size', { size: set.size });
     });
 });
 
-// --- Запуск ---
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Signaling server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Signaling server running on port ${PORT}`));

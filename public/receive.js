@@ -27,7 +27,6 @@ const socket = io(SOCKET_URL);
         setTimeout(() => copyBtn.textContent = 'Скопировать', 1200);
     };
 
-    // Входим в комнату
     socket.emit('join-room', { code });
 
     let fileChunks = [];
@@ -49,8 +48,7 @@ const socket = io(SOCKET_URL);
             a.textContent = `Скачать: ${fileName} (${(expectedSize / 1024 / 1024).toFixed(2)} MB)`;
             a.className = 'btn';
             downloads.appendChild(a);
-
-            setStatus(statusEl, 'Передача завершена ✅');
+            setStatus(statusEl, 'Передача завершена.');
             fileChunks = [];
             expectedSize = 0;
         }
@@ -68,7 +66,7 @@ const socket = io(SOCKET_URL);
                 { urls: 'stun:stun1.l.google.com:19302' }
             ],
             onSignal: (data) => socket.emit('signal', { code, data }),
-            onConnect: () => setStatus(statusEl, 'P2P соединение установлено. Ждём файл…'),
+            onConnect: () => setStatus(statusEl, 'P2P соединение установлено. Ожидаем файл…'),
             onData: (data) => {
                 if (typeof data === 'string') {
                     try {
@@ -78,37 +76,27 @@ const socket = io(SOCKET_URL);
                             expectedSize = meta.size || 0;
                             recvText.textContent = `Получение: ${fileName}`;
                             setBar(recvBar, 0);
-                            fileChunks = [];
                             return;
                         }
                     } catch {}
                 }
-
                 if (data instanceof ArrayBuffer) {
                     fileChunks.push(data);
                     saveIfComplete();
                 }
             },
-            onClose: () => setStatus(statusEl, 'Соединение закрыто ❌'),
-            onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + (e?.message || e))
+            onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
+            onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
         });
     });
 
     socket.on('signal', (data) => {
-        if (peer) {
-            peer.handleSignal(data);
-        } else {
-            console.warn('Сигнал пришёл до создания peer');
-        }
+        if (peer) peer.handleSignal(data);
     });
 
     socket.on('room-size', ({ size }) => {
         if (size < 2) setStatus(statusEl, 'Ждём отправителя…');
     });
 
-    socket.on('peer-left', () => {
-        setStatus(statusEl, 'Отправитель отключился.');
-        peer?.destroy?.();
-        peer = null;
-    });
+    socket.on('peer-left', () => setStatus(statusEl, 'Отправитель отключился.'));
 })();
