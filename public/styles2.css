@@ -36,7 +36,7 @@
   --progress-bg: rgba(255, 255, 255, 0.08);
   --progress-fill: linear-gradient(90deg, #6ea8fe, #9ec5ff);
   --focus-ring: 0 0 0 3px rgba(110, 168, 254, 0.4);
-  --qr-size: clamp(180px, 28vw, 240px);
+  --qr-size: 240px;
 }
 
 /* Мобильный вариант оттенков — мягче по контрасту */
@@ -658,10 +658,6 @@ body.theme-premium {
 }
 
 @media (max-width: 600px) {
-  .qr {
-    width: clamp(160px, 48vw, 200px);
-    height: clamp(160px, 48vw, 200px);
-  }
 
   .app-main {
     padding-block: 22px;
