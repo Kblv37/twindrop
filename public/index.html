@@ -69,7 +69,20 @@
 
   <footer class="app-footer" role="contentinfo">
     <div class="container footer-inner">
-      <span class="muted">Соединение P2P через WebRTC. Сервер видит только сигналы.</span>
+      <div class="muted info-box">
+        <strong>Соединение P2P через WebRTC</strong><br>
+        Ваши файлы передаются напрямую от устройства к устройству.
+        Сервер используется только для обмена техническими сигналами,
+        но сами файлы через него <b>не проходят</b>.
+        <ul>
+          <li>Сервер <b>не хранит</b> и <b>не фиксирует</b> содержимое файлов.</li>
+          <li>Передача полностью анонимна.</li>
+          <li>История и логи <b>не сохраняются</b>.</li>
+          <li>После завершения сессии никаких данных не остаётся.</li>
+        </ul>
+        Это значит, что ваши файлы доступны только вам и получателю —
+        как будто вы передаёте их напрямую по кабелю, только через интернет.
+      </div>
       <div class="social">
         <a class="social-btn ripple" href="https://t.me/h4tenigg4s" target="_blank" rel="noopener" aria-label="Telegram @h4tenigg4s" data-tooltip="Telegram">
           <!-- Telegram SVG -->
@@ -91,22 +104,6 @@
   <script>
     // prefers-reduced-motion
     const PRM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // Риппл по клику
-    // document.addEventListener('click', (e) => {
-    //   const btn = e.target.closest('.ripple');
-    //   if (!btn || PRM) return;
-    //   const rect = btn.getBoundingClientRect();
-    //   const x = e.clientX - rect.left;
-    //   const y = e.clientY - rect.top;
-    //   btn.style.setProperty('--ripple-x', x + 'px');
-    //   btn.style.setProperty('--ripple-y', y + 'px');
-    //   btn.classList.remove('is-rippling');
-    //   // force reflow
-    //   void btn.offsetWidth;
-    //   btn.classList.add('is-rippling');
-    //   setTimeout(() => btn.classList.remove('is-rippling'), 450);
-    // }, { passive: true });
 
     // :focus-visible полировка
     document.addEventListener('keydown', (e) => {
