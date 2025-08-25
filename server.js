@@ -7,16 +7,17 @@ const cors = require('cors');
 
 const app = express();
 
-// Разрешаем CORS для фронтенда на Netlify
+// Разрешаем CORS для фронтенда (Netlify)
 app.use(cors({
-    origin: 'https://twindrop.netlify.app', // или '*' для всех
+    origin: 'https://twindrop.netlify.app', // можно заменить на '*' для тестов
     methods: ['GET', 'POST']
 }));
 
-// Статика для публичных файлов
+// Статика (для локального фронтенда, если нужно)
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
+
 const io = new Server(server, {
     cors: {
         origin: 'https://twindrop.netlify.app', // фронтенд
@@ -27,12 +28,12 @@ const io = new Server(server, {
 // Память для комнат: code -> Set(socketId)
 const rooms = new Map();
 
-// Генерация 6-значного кода
+// Генерация 6-значного кода комнаты
 function genCode() {
     return Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
 }
 
-// REST API: новый код комнаты
+// REST API: получение нового кода комнаты
 app.get('/api/new-room', (req, res) => {
     let code;
     do {
@@ -42,13 +43,12 @@ app.get('/api/new-room', (req, res) => {
     res.json({ code });
 });
 
-// Socket.IO
+// Socket.IO события
 io.on('connection', (socket) => {
     socket.on('join-room', ({ code }) => {
         if (!code) return;
 
         if (!rooms.has(code)) rooms.set(code, new Set());
-
         const set = rooms.get(code);
 
         // ограничение до 2 участников
@@ -61,10 +61,10 @@ io.on('connection', (socket) => {
         socket.join(code);
         socket.data.code = code;
 
-        // уведомляем другого участника
+        // уведомляем второго участника
         socket.to(code).emit('peer-joined');
 
-        // текущий размер комнаты
+        // отправляем размер комнаты всем участникам
         io.to(code).emit('room-size', { size: set.size });
     });
 
@@ -79,11 +79,14 @@ io.on('connection', (socket) => {
         const set = rooms.get(code);
         if (!set) return;
         set.delete(socket.id);
+
+        // уведомляем оставшегося участника
         socket.to(code).emit('peer-left');
+
         if (set.size === 0) rooms.delete(code);
         else io.to(code).emit('room-size', { size: set.size });
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Signaling server running on http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Signaling server running on port ${PORT}`));
