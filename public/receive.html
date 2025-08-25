@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Получить файл — P2P Share</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="/shared.js" defer></script>
+    <script src="/receive.js" defer></script>
+</head>
+
+<body>
+    <div class="wrap">
+        <h1>Получить файл</h1>
+
+
+        <div class="section">
+            <div class="row">
+                <div>
+                    <div>Ваш код:</div>
+                    <div id="code" class="code">••••••</div>
+                </div>
+                <button id="copyCode" class="btn">Скопировать</button>
+            </div>
+            <div class="row" style="margin-top:12px; gap:20px; align-items:flex-start;">
+                <div>
+                    <div class="small">Попросите отправителя ввести этот код на странице «Отправить»,
+                        или пусть просто отсканирует QR:</div>
+                    <div id="qr" class="qr"></div>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="status" class="section notice" style="display:none"></div>
+
+
+        <div class="section">
+            <div class="row">
+                <div>
+                    <strong>Скачивание:</strong>
+                    <div class="progress" style="margin-top:8px; width:360px; max-width:100%">
+                        <div id="recvBar" class="bar"></div>
+                    </div>
+                    <div id="recvText" class="small">Ожидание отправителя…</div>
+                </div>
+            </div>
+            <div id="downloads" style="margin-top:12px"></div>
+        </div>
+
+
+        <div class="small" style="margin-top:12px">Соединение P2P через WebRTC. Сервер видит только сигналы,
+            файлы идут напрямую между устройствами.</div>
+    </div>
+</body>
+
+</html>
