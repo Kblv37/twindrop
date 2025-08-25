@@ -226,8 +226,8 @@ body.theme-premium {
 }
 
 .qr {
-  width: var(--qr-size);
-  height: var(--qr-size);
+  width: --qr-size;
+  height: --qr-size;
   background: rgba(255, 255, 255, 0.02);
   border: 1px dashed rgba(255, 255, 255, 0.14);
   border-radius: var(--radius-sm);
