@@ -1,4 +1,4 @@
-// socket подключаем к Render
+// receive.js — фронт для получателя с подключением к Render
 const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
@@ -16,8 +16,8 @@ const socket = io(SOCKET_URL);
     const { code } = await r.json();
     codeEl.textContent = code;
 
-    // QR ведёт на фронт (Netlify)
-    const url = `${window.location.origin}/send.html?room=${code}`;
+    // QR ведёт на публичный URL Render
+    const url = `${SOCKET_URL}/send.html?room=${code}`;
     new QRCode(qrContainer, { text: url, width: 200, height: 200 });
 
     // Копирование кода
@@ -61,6 +61,10 @@ const socket = io(SOCKET_URL);
 
         peer = createPeer({
             initiator: false,
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ],
             onSignal: (data) => socket.emit('signal', { code, data }),
             onConnect: () => setStatus(statusEl, 'P2P соединение установлено. Ожидаем файл…'),
             onData: (data) => {

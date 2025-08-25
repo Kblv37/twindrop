@@ -1,17 +1,21 @@
 // Общие утилиты для send/receive
 function $(sel) { return document.querySelector(sel); }
+
 function setStatus(el, text) {
     el.style.display = text ? 'block' : 'none';
     el.textContent = text || '';
 }
-function setBar(bar, ratio) { bar.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`; }
+
+function setBar(bar, ratio) { 
+    bar.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`; 
+}
 
 // Простая обёртка над RTCPeerConnection + data channel
 function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }) {
     const pc = new RTCPeerConnection({
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478?transport=udp' },
+            { urls: 'stun:stun1.l.google.com:19302' }, // валидный второй STUN
         ]
     });
 

@@ -14,16 +14,14 @@ const socket = io(SOCKET_URL);
     const qrContainer = $('#qrContainer'); // элемент для QR-кода
 
     const q = parseQuery();
-    if (q.room) {
-        codeInput.value = q.room;
-    }
+    if (q.room) codeInput.value = q.room;
 
     let peer;
     let code;
 
-    // Генерация QR-кода с фронта (Netlify)
+    // Генерация QR-кода с публичным URL Render
     function generateRoomQR(code) {
-        const url = `${window.location.origin}/send.html?room=${code}`;
+        const url = `${SOCKET_URL}/send.html?room=${code}`;
         qrContainer.innerHTML = '';
         new QRCode(qrContainer, {
             text: url,
@@ -41,7 +39,6 @@ const socket = io(SOCKET_URL);
         setStatus(statusEl, 'Подключаемся к комнате…');
         socket.emit('join-room', { code });
 
-        // Показываем QR-код для сканирования
         generateRoomQR(code);
     }
 
@@ -57,8 +54,14 @@ const socket = io(SOCKET_URL);
             setStatus(statusEl, 'Ожидание получателя…');
         } else if (size === 2 && !peer) {
             setStatus(statusEl, 'Получатель на месте. Устанавливаем P2P…');
+
+            // создаём P2P соединение
             peer = createPeer({
                 initiator: true,
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ],
                 onSignal: (data) => socket.emit('signal', { code, data }),
                 onConnect: () => {
                     setStatus(statusEl, 'P2P соединение установлено. Можно отправлять файл.');
@@ -88,10 +91,8 @@ const socket = io(SOCKET_URL);
         const file = fileInput.files[0];
         if (!file) return;
 
-        // 1) Отправляем метаданные файла
         peer.channel().send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
 
-        // 2) Отправка файла чанками
         const reader = file.stream().getReader();
         let sent = 0;
 
