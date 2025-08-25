@@ -5,158 +5,55 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Получить файл — P2P Share</title>
-    <link rel="stylesheet" href="/styles2.css" />
+    <link rel="stylesheet" href="/styles.css" />
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="/shared.js" defer></script>
     <script src="/receive.js" defer></script>
-    <script src="/animation.js" defer></script>
 </head>
 
 <body>
-
     <header class="app-header" role="banner" aria-label="Навигация P2P Share">
-        <div class="header-inner">
-            <a class="brand" href="/" aria-label="P2P Share">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path fill="currentColor"
-                        d="M12 2a10 10 0 1 1-7.07 2.93L9 8l6-2 2 6-5 5-6-2 2-6L4.93 4.93A10 10 0 0 1 12 2z" />
-                </svg>
-                P2P Share
-            </a>
-            <nav class="nav" aria-label="Основная навигация">
-                <a class="nav-link" href="/receive" aria-current="page">Получить</a>
-                <a class="nav-link" href="/send">Отправить</a>
-            </nav>
+        <div class="header-inner"> <a class="brand" href="/">P2P Share</a>
+            <nav class="nav"> <a class="nav-link" href="/receive">Получить</a> <a class="nav-link"
+                    href="/send">Отправить</a> </nav>
         </div>
     </header>
-
-
     <main class="app-main" role="main">
-
         <div class="wrap">
             <h1>Получить файл</h1>
-
-
-            <div class="section" aria-labelledby="pairing-title">
-                <h2 id="pairing-title" class="visually-hidden">Пара для получения</h2>
+            <div class="section">
                 <div class="row">
                     <div>
-                        <div class="small">Ваш код:</div>
-                        <div id="code" class="code" data-fx="shimmer">••••••</div>
-                    </div>
-                    <div style="position: relative;">
-                        <button id="copyCode" class="btn" aria-label="Скопировать код"
-                            data-copied="0">Скопировать</button>
-                        <span class="tooltip" role="status" aria-live="polite">Код скопирован</span>
-                    </div>
+                        <div>Ваш код:</div>
+                        <div id="code" class="code">••••••</div>
+                    </div> <button id="copyCode" class="btn">Скопировать</button>
                 </div>
-
                 <div class="row" style="margin-top:12px; gap:20px; align-items:flex-start;">
                     <div>
-                        <div class="small">
-                            Попросите отправителя ввести код на странице «Отправить»
-                            или отсканировать QR:
-                        </div>
-                        <div id="qr" class="qr" aria-label="QR-код для подключения" role="img"></div>
+                        <div class="small">Попросите отправителя ввести этот код на странице «Отправить», или пусть
+                            просто отсканирует QR:</div>
+                        <div id="qr" class="qr"></div>
                     </div>
                 </div>
             </div>
-
-
-
             <div id="status" class="section notice" style="display:none"></div>
-
-
-            <div class="section" aria-labelledby="progress-title">
-                <h2 id="progress-title" class="visually-hidden">Состояние передачи</h2>
+            <div class="section">
                 <div class="row">
-                    <div style="flex:1">
-                        <strong>Прогресс:</strong>
-                        <div class="progress" id="progress" data-state="idle" style="margin-top:8px; max-width:100%">
-                            <div id="recvBar" class="bar"></div> <!-- или sendBar на send -->
+                    <div> <strong>Скачивание:</strong>
+                        <div class="progress" style="margin-top:8px; width:360px; max-width:100%">
+                            <div id="recvBar" class="bar"></div>
                         </div>
                         <div id="recvText" class="small">Ожидание отправителя…</div>
                     </div>
                 </div>
                 <div id="downloads" style="margin-top:12px"></div>
             </div>
-
-
-
-            <div class="small" style="margin-top:12px">Соединение P2P через WebRTC. Сервер видит только сигналы,
-                файлы идут напрямую между устройствами.</div>
+            <div class="small" style="margin-top:12px">Соединение P2P через WebRTC. Сервер видит только сигналы, файлы
+                идут напрямую между устройствами.</div>
         </div>
-
     </main>
-
-    <footer class="app-footer" role="contentinfo">
-        <span class="muted">Соединение P2P через WebRTC. Сервер видит только сигналы.</span>
-    </footer>
-
-    <!-- Соцсети -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const socialHTML = `
-                <style>
-                .social-links {
-                    display: flex;
-                    justify-content: center;
-                    gap: 14px;
-                    margin: 0 0 30px; /* сверху 0, снизу 30px */
-                    flex-wrap: wrap;
-                }
-                .social-links a {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 50%;
-                    background: var(--surface-2, #222);
-                    color: var(--text, #fff);
-                    text-decoration: none;
-                    transition: transform 0.2s ease, background 0.2s ease;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                }
-                .social-links a:hover {
-                    transform: translateY(-2px);
-                    background: var(--accent, #1da1f2);
-                    color: #fff;
-                }
-                .social-links svg {
-                    width: 20px;
-                    height: 20px;
-                    fill: currentColor;
-                }
-                @media (max-width: 480px) {
-                    .social-links {
-                    gap: 10px;
-                    }
-                    .social-links a {
-                    width: 40px;
-                    height: 40px;
-                    }
-                }
-                </style>
-                <div class="social-links" aria-label="Мои соцсети">
-                <!-- Telegram -->
-                <a href="https://t.me/h4tenigg4s" target="_blank" rel="noopener" aria-label="Telegram">
-                    <svg viewBox="0 0 24 24"><path d="M9.999 15.17 9.94 19c.57 0 .82-.24 1.12-.53l2.68-2.57 5.56 4.07c1.02.56 1.75.27 2.01-.94l3.64-17.06c.33-1.54-.56-2.14-1.56-1.77L1.48 9.3c-1.5.58-1.48 1.4-.26 1.78l5.7 1.78 13.2-8.3c.62-.38 1.18-.17.72.24"/></svg>
-                </a>
-                <!-- Twitter -->
-                <a href="https://x.com/kblv37" target="_blank" rel="noopener" aria-label="Twitter">
-                    <svg viewBox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69a4.27 4.27 0 0 0 1.88-2.37 8.59 8.59 0 0 1-2.71 1.04 4.25 4.25 0 0 0-7.24 3.87A12.06 12.06 0 0 1 3.15 4.6a4.25 4.25 0 0 0 1.31 5.67 4.21 4.21 0 0 1-1.92-.53v.05a4.25 4.25 0 0 0 3.41 4.17 4.3 4.3 0 0 1-1.91.07 4.25 4.25 0 0 0 3.97 2.95A8.52 8.52 0 0 1 2 19.54a12.03 12.03 0 0 0 6.52 1.91c7.83 0 12.11-6.49 12.11-12.11 0-.18-.01-.35-.02-.53A8.64 8.64 0 0 0 24 5.1a8.49 8.49 0 0 1-2.54.7z"/></svg>
-                </a>
-                <!-- LinkedIn -->
-                <a href="https://www.linkedin.com/in/jahongir-qobilov-76a742275?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" target="_blank" rel="noopener" aria-label="LinkedIn">
-                    <svg viewBox="0 0 24 24"><path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.5 8h4V24h-4V8zm7.5 0h3.8v2.2h.05c.53-1 1.82-2.2 3.75-2.2 4 0 4.75 2.63 4.75 6V24h-4v-7.9c0-1.88-.03-4.3-2.62-4.3-2.62 0-3.02 2.05-3.02 4.17V24h-4V8z"/></svg>
-                </a>
-                </div>
-            `;
-            document.body.insertAdjacentHTML("beforeend", socialHTML);
-        });
-    </script>
-
+    <footer class="app-footer" role="contentinfo"> <span class="muted">Соединение P2P через WebRTC. Сервер видит только
+            сигналы.</span> </footer>
 </body>
 
 </html>
