@@ -9,19 +9,27 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="/shared.js" defer></script>
     <script src="/send.js" defer></script>
+    <script src="/animation.js" defer></script>
 </head>
 
 <body>
 
     <header class="app-header" role="banner" aria-label="Навигация P2P Share">
         <div class="header-inner">
-            <a class="brand" href="/">P2P Share</a>
-            <nav class="nav">
-                <a class="nav-link" href="/receive">Получить</a>
+            <a class="brand" href="/" aria-label="P2P Share">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M12 2a10 10 0 1 1-7.07 2.93L9 8l6-2 2 6-5 5-6-2 2-6L4.93 4.93A10 10 0 0 1 12 2z" />
+                </svg>
+                P2P Share
+            </a>
+            <nav class="nav" aria-label="Основная навигация">
+                <a class="nav-link" href="/receive" aria-current="page">Получить</a>
                 <a class="nav-link" href="/send">Отправить</a>
             </nav>
         </div>
     </header>
+
 
     <main class="app-main" role="main">
 
@@ -30,27 +38,34 @@
 
             <div class="section">
                 <div class="row">
-                    <input id="codeInput" class="input" placeholder="6-значный код" maxlength="6" />
-                    <button id="joinBtn" class="btn">Подключиться</button>
+                    <input id="codeInput" class="input" inputmode="numeric" pattern="[0-9]*" placeholder="6‑значный код"
+                        maxlength="6" aria-label="Код получателя" />
+                    <button id="joinBtn" class="btn" disabled>Подключиться</button>
                 </div>
                 <div class="small" style="margin-top:8px">Или откройте эту страницу по QR — код подставится сам.</div>
             </div>
 
             <div id="sendUI" class="section" style="display:none">
                 <div class="row">
-                    <input type="file" id="file" />
+                    <label class="dropzone" id="drop" for="file">
+                        <div class="small">Перетащите файл сюда или нажмите, чтобы выбрать</div>
+                        <button type="button" class="btn" style="pointer-events:none">Выбрать файл</button>
+                    </label>
+                    <input type="file" id="file" hidden />
                     <button id="sendBtn" class="btn" disabled>Отправить</button>
                 </div>
+
                 <div class="row" style="margin-top:12px">
                     <div style="flex:1">
                         <div><strong>Передача:</strong></div>
-                        <div class="progress" style="margin-top:8px">
+                        <div class="progress" id="progress" data-state="idle" style="margin-top:8px">
                             <div id="sendBar" class="bar"></div>
                         </div>
                         <div id="sendText" class="small">Ожидание подключения получателя…</div>
                     </div>
                 </div>
             </div>
+
 
             <div id="status" class="section notice" style="display:none"></div>
         </div>

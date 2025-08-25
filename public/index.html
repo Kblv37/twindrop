@@ -13,6 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="/shared.js" defer></script>
     <script src="/receive.js" defer></script>
+    <script src="/animation.js" defer></script>
 </head>
 
 
@@ -22,13 +23,20 @@
 
     <header class="app-header" role="banner" aria-label="Навигация P2P Share">
         <div class="header-inner">
-            <a class="brand" href="/">P2P Share</a>
-            <nav class="nav">
-                <a class="nav-link" href="/receive">Получить</a>
+            <a class="brand" href="/" aria-label="P2P Share">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M12 2a10 10 0 1 1-7.07 2.93L9 8l6-2 2 6-5 5-6-2 2-6L4.93 4.93A10 10 0 0 1 12 2z" />
+                </svg>
+                P2P Share
+            </a>
+            <nav class="nav" aria-label="Основная навигация">
+                <a class="nav-link" href="/receive" aria-current="page">Получить</a>
                 <a class="nav-link" href="/send">Отправить</a>
             </nav>
         </div>
     </header>
+
 
     <main class="app-main" role="main">
 

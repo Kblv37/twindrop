@@ -9,19 +9,27 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="/shared.js" defer></script>
     <script src="/receive.js" defer></script>
+    <script src="/animation.js" defer></script>
 </head>
 
 <body>
 
     <header class="app-header" role="banner" aria-label="Навигация P2P Share">
         <div class="header-inner">
-            <a class="brand" href="/">P2P Share</a>
-            <nav class="nav">
-                <a class="nav-link" href="/receive">Получить</a>
+            <a class="brand" href="/" aria-label="P2P Share">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M12 2a10 10 0 1 1-7.07 2.93L9 8l6-2 2 6-5 5-6-2 2-6L4.93 4.93A10 10 0 0 1 12 2z" />
+                </svg>
+                P2P Share
+            </a>
+            <nav class="nav" aria-label="Основная навигация">
+                <a class="nav-link" href="/receive" aria-current="page">Получить</a>
                 <a class="nav-link" href="/send">Отправить</a>
             </nav>
         </div>
     </header>
+
 
     <main class="app-main" role="main">
 
@@ -29,39 +37,50 @@
             <h1>Получить файл</h1>
 
 
-            <div class="section">
+            <div class="section" aria-labelledby="pairing-title">
+                <h2 id="pairing-title" class="visually-hidden">Пара для получения</h2>
                 <div class="row">
                     <div>
-                        <div>Ваш код:</div>
-                        <div id="code" class="code">••••••</div>
+                        <div class="small">Ваш код:</div>
+                        <div id="code" class="code" data-fx="shimmer">••••••</div>
                     </div>
-                    <button id="copyCode" class="btn">Скопировать</button>
+                    <div style="position: relative;">
+                        <button id="copyCode" class="btn" aria-label="Скопировать код"
+                            data-copied="0">Скопировать</button>
+                        <span class="tooltip" role="status" aria-live="polite">Код скопирован</span>
+                    </div>
                 </div>
+
                 <div class="row" style="margin-top:12px; gap:20px; align-items:flex-start;">
                     <div>
-                        <div class="small">Попросите отправителя ввести этот код на странице «Отправить»,
-                            или пусть просто отсканирует QR:</div>
-                        <div id="qr" class="qr"></div>
+                        <div class="small">
+                            Попросите отправителя ввести код на странице «Отправить»
+                            или отсканировать QR:
+                        </div>
+                        <div id="qr" class="qr" aria-label="QR-код для подключения" role="img"></div>
                     </div>
                 </div>
             </div>
 
 
+
             <div id="status" class="section notice" style="display:none"></div>
 
 
-            <div class="section">
+            <div class="section" aria-labelledby="progress-title">
+                <h2 id="progress-title" class="visually-hidden">Состояние передачи</h2>
                 <div class="row">
-                    <div>
-                        <strong>Скачивание:</strong>
-                        <div class="progress" style="margin-top:8px; width:360px; max-width:100%">
-                            <div id="recvBar" class="bar"></div>
+                    <div style="flex:1">
+                        <strong>Прогресс:</strong>
+                        <div class="progress" id="progress" data-state="idle" style="margin-top:8px; max-width:100%">
+                            <div id="recvBar" class="bar"></div> <!-- или sendBar на send -->
                         </div>
                         <div id="recvText" class="small">Ожидание отправителя…</div>
                     </div>
                 </div>
                 <div id="downloads" style="margin-top:12px"></div>
             </div>
+
 
 
             <div class="small" style="margin-top:12px">Соединение P2P через WebRTC. Сервер видит только сигналы,
