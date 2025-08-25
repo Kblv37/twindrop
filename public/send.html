@@ -5,45 +5,142 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Отправить файл — P2P Share</title>
-    <link rel="stylesheet" href="/styles2.css" />
+    <link rel="stylesheet" href="styles2.css" />
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="/shared.js" defer></script>
-    <script src="/send.js" defer></script>
+    <script src="shared.js" defer></script>
+    <script src="send.js" defer></script>
 </head>
 
-<body>
-    <header class="app-header" role="banner" aria-label="Навигация P2P Share">
-        <div class="header-inner"> <a class="brand" href="/">P2P Share</a>
-            <nav class="nav"> <a class="nav-link" href="/receive">Получить</a> <a class="nav-link"
-                    href="/send">Отправить</a> </nav>
+<body class="theme-premium">
+  <div class="bg">
+    <div class="bg-gradient"></div>
+    <div class="bg-vignette"></div>
+    <div class="bg-noise" aria-hidden="true"></div>
+  </div>
+
+  <header class="app-header" role="banner" aria-label="Навигация P2P Share">
+    <div class="header-inner container">
+      <a class="brand" href="/">P2P Share</a>
+      <nav class="nav" aria-label="Основная навигация">
+        <a class="nav-link ripple" href="/receive">Получить</a>
+        <a class="nav-link ripple" href="/send">Отправить</a>
+      </nav>
+    </div>
+    <div class="hairline"></div>
+  </header>
+
+  <main class="app-main container" role="main">
+    <div class="wrap">
+      <h1 class="page-title">Отправить файл</h1>
+
+      <section class="section glass" aria-labelledby="join-title">
+        <h2 id="join-title" class="visually-hidden">Подключение по коду</h2>
+        <div class="row join-row">
+          <input id="codeInput" class="input mono upper" placeholder="6-значный код" maxlength="6" inputmode="numeric" aria-label="6-значный код" />
+          <button id="joinBtn" class="btn ripple gloss">Подключиться</button>
         </div>
-    </header>
-    <main class="app-main" role="main">
-        <div class="wrap">
-            <h1>Отправить файл</h1>
-            <div class="section">
-                <div class="row"> <input id="codeInput" class="input" placeholder="6-значный код" maxlength="6" />
-                    <button id="joinBtn" class="btn">Подключиться</button> </div>
-                <div class="small" style="margin-top:8px">Или откройте эту страницу по QR — код подставится сам.</div>
+        <div class="small muted" style="margin-top:8px">Или откройте эту страницу по QR — код подставится сам.</div>
+      </section>
+
+      <section id="sendUI" class="section glass" style="display:none" aria-labelledby="send-title">
+        <h2 id="send-title" class="section-title">Передача</h2>
+
+        <!-- Дропзона (обёртка вокруг существующего input#file) -->
+        <div class="dropzone" role="button" tabindex="0" aria-label="Выберите файл или перетащите сюда">
+          <div class="dz-visual">
+            <div class="dz-icon" aria-hidden="true">⤓</div>
+            <div class="dz-text">
+              <div class="dz-title">Перетащите файл сюда</div>
+              <div class="dz-sub muted">или кликните для выбора</div>
             </div>
-            <div id="sendUI" class="section" style="display:none">
-                <div class="row"> <input type="file" id="file" /> <button id="sendBtn" class="btn"
-                        disabled>Отправить</button> </div>
-                <div class="row" style="margin-top:12px">
-                    <div style="flex:1">
-                        <div><strong>Передача:</strong></div>
-                        <div class="progress" style="margin-top:8px">
-                            <div id="sendBar" class="bar"></div>
-                        </div>
-                        <div id="sendText" class="small">Ожидание подключения получателя…</div>
-                    </div>
-                </div>
-            </div>
-            <div id="status" class="section notice" style="display:none"></div>
+          </div>
+          <input type="file" id="file" aria-label="Файл для отправки" />
         </div>
-    </main>
-    <footer class="app-footer" role="contentinfo"> <span class="muted">Соединение P2P через WebRTC. Сервер видит только
-            сигналы.</span> </footer>
+
+        <div class="row actions-row">
+          <button id="sendBtn" class="btn ripple gloss" disabled>Отправить</button>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <div class="progress-wrap">
+            <div class="progress" aria-label="Ход передачи">
+              <div id="sendBar" class="bar"></div>
+            </div>
+            <div id="sendText" class="small muted">Ожидание подключения получателя…</div>
+          </div>
+        </div>
+      </section>
+
+      <div id="status" class="section notice" style="display:none" role="status" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <footer class="app-footer" role="contentinfo">
+    <div class="container footer-inner">
+      <span class="muted">Соединение P2P через WebRTC. Сервер видит только сигналы.</span>
+      <div class="social">
+        <a class="social-btn ripple" href="https://t.me/h4tenigg4s" target="_blank" rel="noopener" aria-label="Telegram @h4tenigg4s" data-tooltip="Telegram">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.04 15.02 8.9 19.2c.41 0 .6-.18.82-.4l1.96-1.88 4.06 2.98c.75.41 1.28.2 1.49-.7l2.7-12.64c.24-1.1-.42-1.53-1.13-1.26L3.6 10.1c-1.08.42-1.06 1.02-.18 1.29l4.36 1.36 10.11-6.37c.48-.3.92-.14.56.16"/></svg>
+        </a>
+        <a class="social-btn ripple" href="https://x.com/kblv37" target="_blank" rel="noopener" aria-label="Twitter X @kblv37" data-tooltip="X / Twitter">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 3h3l-7.5 8.6L22 21h-6l-4.5-5.6L6 21H3l7.9-9.1L2 3h6l4.1 5.3L18 3z"/></svg>
+        </a>
+        <a class="social-btn ripple" href="https://www.linkedin.com/" target="_blank" rel="noopener" aria-label="LinkedIn" data-tooltip="LinkedIn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM0 8h5v16H0V8zm7.5 0H12v2.2h.06c.63-1.2 2.18-2.46 4.49-2.46 4.8 0 5.68 3.16 5.68 7.26V24h-5v-6.93c0-1.65-.03-3.77-2.3-3.77-2.3 0-2.65 1.79-2.65 3.64V24h-5V8z"/></svg>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- UI‑скрипты: риппл, фокус, дропзона, валидация кода -->
+  <script>
+    const PRM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // document.addEventListener('click', (e) => {
+    //   const btn = e.target.closest('.ripple');
+    //   if (!btn || PRM) return;
+    //   const r = btn.getBoundingClientRect();
+    //   btn.style.setProperty('--ripple-x', (e.clientX - r.left) + 'px');
+    //   btn.style.setProperty('--ripple-y', (e.clientY - r.top) + 'px');
+    //   btn.classList.remove('is-rippling'); void btn.offsetWidth; btn.classList.add('is-rippling');
+    //   setTimeout(() => btn.classList.remove('is-rippling'), 450);
+    // }, { passive: true });
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Tab') document.documentElement.classList.add('kbd-nav'); }, { passive: true });
+    document.addEventListener('mousedown', () => { document.documentElement.classList.remove('kbd-nav'); }, { passive: true });
+
+    // Ввод кода: только цифры, авто-uppercase, aria-invalid
+    const codeInput = document.getElementById('codeInput');
+    if (codeInput) {
+      codeInput.addEventListener('input', () => {
+        const digits = codeInput.value.replace(/\D/g, '').slice(0, 6);
+        codeInput.value = digits;
+        codeInput.setAttribute('aria-invalid', digits.length === 6 ? 'false' : 'true');
+      });
+    }
+
+    // Дропзона вокруг #file
+    const fileInput = document.getElementById('file');
+    const dz = document.querySelector('.dropzone');
+    const sendBtn = document.getElementById('sendBtn');
+    if (fileInput && dz) {
+      const activate = (on) => dz.classList.toggle('drag-over', !!on);
+      const setFile = (file) => {
+        dz.querySelector('.dz-title').textContent = file.name;
+        dz.querySelector('.dz-sub').textContent = (file.size ? (Math.round(file.size/1024/1024*100)/100)+' MB' : 'Размер неизвестен');
+        sendBtn && (sendBtn.disabled = false);
+      };
+      dz.addEventListener('click', () => fileInput.click());
+      dz.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }});
+      ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, (e) => { e.preventDefault(); activate(true); }));
+      ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, (e) => { e.preventDefault(); activate(false); }));
+      dz.addEventListener('drop', (e) => {
+        const f = e.dataTransfer.files?.[0];
+        if (f) { fileInput.files = e.dataTransfer.files; setFile(f); }
+      });
+      fileInput.addEventListener('change', () => { if (fileInput.files?.[0]) setFile(fileInput.files[0]); });
+    }
+  </script>
 </body>
 
 </html>
