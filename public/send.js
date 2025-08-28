@@ -19,16 +19,6 @@ const socket = io(SOCKET_URL);
     let peer;
     let code;
 
-    // Генерация QR-кода с публичным URL Render
-    function generateRoomQR(code) {
-        const url = `${SOCKET_URL}/send.html?room=${code}`;
-        qrContainer.innerHTML = '';
-        new QRCode(qrContainer, {
-            text: url,
-            width: 200,
-            height: 200
-        });
-    }
 
     function join() {
         code = (codeInput.value || '').replace(/\D/g, '').padStart(6, '0');
