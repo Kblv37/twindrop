@@ -23,8 +23,8 @@ const socket = io(SOCKET_URL);
     qrContainer.innerHTML = ""; // очищаем, чтобы не плодились
     new QRCode(qrContainer, {
         text: url,
-        width: 210,
-        height: 210,
+        width: 200,
+        height: 200,
     });
 
     // Копирование кода
