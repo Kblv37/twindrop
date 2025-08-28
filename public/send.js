@@ -1,5 +1,6 @@
-// send.js — фронт для отправителя с подключением к Render
+// send.js — фронт для отправителя с проверкой комнаты в реальном времени
 const SOCKET_URL = 'https://twindrop.onrender.com';
+const API_URL = SOCKET_URL + '/api'; // REST API
 const socket = io(SOCKET_URL);
 
 (function () {
@@ -18,14 +19,49 @@ const socket = io(SOCKET_URL);
 
     let peer;
     let code;
+    let roomExists = false; // хранение статуса
 
+    // 🔎 Проверка комнаты в реальном времени
+    async function checkRoom() {
+        const val = (codeInput.value || '').replace(/\D/g, '').padStart(6, '0');
+        if (val.length !== 6) {
+            setStatus(statusEl, 'Введите 6-значный код.');
+            roomExists = false;
+            joinBtn.disabled = true;
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_URL}/check-room/${val}`);
+            const data = await res.json();
+
+            if (data.exists) {
+                setStatus(statusEl, 'Комната найдена ✅');
+                roomExists = true;
+                joinBtn.disabled = false;
+            } else {
+                setStatus(statusEl, 'Комната не найдена ❌');
+                roomExists = false;
+                joinBtn.disabled = true;
+            }
+        } catch (err) {
+            setStatus(statusEl, 'Ошибка проверки комнаты.');
+            console.error(err);
+            joinBtn.disabled = true;
+            roomExists = false;
+        }
+    }
+
+    // Слушатель для ввода кода (реальное время)
+    codeInput.addEventListener('input', checkRoom);
 
     function join() {
         code = (codeInput.value || '').replace(/\D/g, '').padStart(6, '0');
-        if (code.length !== 6) {
-            setStatus(statusEl, 'Введите корректный 6-значный код.');
+        if (!roomExists) {
+            setStatus(statusEl, 'Сначала введите существующий код.');
             return;
         }
+
         setStatus(statusEl, 'Подключаемся к комнате…');
         socket.emit('join-room', { code });
     }
