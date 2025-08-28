@@ -15,7 +15,14 @@ const socket = io(SOCKET_URL);
     const qrContainer = $('#qrContainer'); // элемент для QR-кода
 
     const q = parseQuery();
-    if (q.room) codeInput.value = q.room;
+    if (q.room) {
+        codeInput.value = q.room;
+        // ждём пока input реально обновится и сразу проверяем комнату
+        setTimeout(async () => {
+            await checkRoom(); // сначала проверяем через API
+            if (roomExists) join(); // если есть — сразу подключаемся
+        }, 0);
+    }
 
     let peer;
     let code;
