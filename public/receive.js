@@ -1,4 +1,4 @@
-// receive.js — фронт для получателя с подключением к Render
+// receive.js — фронт для получателя
 const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
@@ -16,9 +16,16 @@ const socket = io(SOCKET_URL);
     const { code } = await r.json();
     codeEl.textContent = code;
 
-    // QR ведёт на публичный URL Render
+    // Формируем URL на основе кода
     const url = `https://twindrop.netlify.app/send.html?room=${code}`;
-    new QRCode(qrContainer, { text: url, width: 200, height: 200 });
+
+    // Генерация QR на клиенте (чисто JS, без сервера)
+    qrContainer.innerHTML = ""; // очищаем, чтобы не плодились
+    new QRCode(qrContainer, {
+        text: url,
+        width: 200,
+        height: 200,
+    });
 
     // Копирование кода
     copyBtn.onclick = async () => {
