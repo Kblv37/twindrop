@@ -226,11 +226,10 @@ body.theme-premium {
 }
 
 .qr {
-  width: 210px;
-  height: 210px;
-  background: rgba(255, 255, 255, 0.02);
+  width: 256px;
+  height: 256px;
+  background: rgba(255, 255, 255, 0.6);
   border: 1px dashed rgba(255, 255, 255, 0.14);
-  /* border-radius: var(--radius-sm); */
   display: grid;
   place-items: center;
   overflow: hidden;
