@@ -9,11 +9,11 @@ const app = express();
 
 // Разрешаем CORS для фронтенда (Netlify)
 app.use(cors({
-    origin: 'https://twindrop.netlify.app', // замени на '*' для локальных тестов
+    origin: 'https://twindrop.netlify.app', // можно заменить на '*' для тестов
     methods: ['GET', 'POST']
 }));
 
-// Раздача статики (если нужно для локалки)
+// Статика (для локального фронтенда, если нужно)
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
@@ -25,15 +25,15 @@ const io = new Server(server, {
     }
 });
 
-// Хранилище: code -> Set(socketId)
+// Память для комнат: code -> Set(socketId)
 const rooms = new Map();
 
-// Генерация 6-значного кода
+// Генерация 6-значного кода комнаты
 function genCode() {
     return Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
 }
 
-// API: создать новую комнату
+// REST API: получение нового кода комнаты
 app.get('/api/new-room', (req, res) => {
     let code;
     do {
@@ -43,21 +43,18 @@ app.get('/api/new-room', (req, res) => {
     res.json({ code });
 });
 
-// API: проверить существование комнаты
+// REST API: проверка существования комнаты
 app.get('/api/check-room/:code', (req, res) => {
     const { code } = req.params;
     res.json({ exists: rooms.has(code) });
 });
 
-// Socket.IO логика
+// Socket.IO события
 io.on('connection', (socket) => {
-    // Присоединение к комнате
     socket.on('join-room', ({ code }) => {
         if (!code) return;
 
-        if (!rooms.has(code)) {
-            rooms.set(code, new Set());
-        }
+        if (!rooms.has(code)) rooms.set(code, new Set());
         const set = rooms.get(code);
 
         // ограничение до 2 участников
@@ -70,38 +67,30 @@ io.on('connection', (socket) => {
         socket.join(code);
         socket.data.code = code;
 
-        // уведомляем второго
+        // уведомляем второго участника
         socket.to(code).emit('peer-joined');
 
-        // всем в комнате говорим, сколько участников
+        // отправляем размер комнаты всем участникам
         io.to(code).emit('room-size', { size: set.size });
     });
 
-    // передача WebRTC сигналов
     socket.on('signal', ({ code, data }) => {
         if (!code) return;
         socket.to(code).emit('signal', data);
     });
 
-    // выход
     socket.on('disconnect', () => {
         const code = socket.data.code;
         if (!code) return;
-
         const set = rooms.get(code);
         if (!set) return;
-
         set.delete(socket.id);
 
-        // уведомляем оставшегося
+        // уведомляем оставшегося участника
         socket.to(code).emit('peer-left');
 
-        // чистим пустые комнаты
-        if (set.size === 0) {
-            rooms.delete(code);
-        } else {
-            io.to(code).emit('room-size', { size: set.size });
-        }
+        if (set.size === 0) rooms.delete(code);
+        else io.to(code).emit('room-size', { size: set.size });
     });
 });
 
