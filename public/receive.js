@@ -16,9 +16,15 @@ const socket = io(SOCKET_URL);
     const { code } = await r.json();
     codeEl.textContent = code;
 
-    // QR ведёт на публичный URL Render
-    const url = `${SOCKET_URL}/send.html?room=${code}`;
-    new QRCode(qrContainer, { text: url, width: 200, height: 200 });
+    // --- QR: короче и надёжнее ---
+    const url = `${SOCKET_URL}/?room=${code}`;
+    qrContainer.innerHTML = '';
+    new QRCode(qrContainer, {
+        text: url,
+        width: 200,
+        height: 200,
+        correctLevel: QRCode.CorrectLevel.H
+    });
 
     // Копирование кода
     copyBtn.onclick = async () => {

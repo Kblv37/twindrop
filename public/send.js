@@ -1,5 +1,7 @@
 // send.js — фронт для отправителя с подключением к Render
-const SOCKET_URL = 'https://twindrop.onrender.com';
+const SOCKET_URL = 'https://twindrop.onrender.com'; // сервер сигналинга (socket.io)
+const APP_URL = 'https://twindrop.onrender.com';   // URL, который сканирует получатель
+
 const socket = io(SOCKET_URL);
 
 (function () {
@@ -19,9 +21,9 @@ const socket = io(SOCKET_URL);
     let peer;
     let code;
 
-    // Генерация QR-кода с публичным URL Render
+    // Генерация QR-кода с публичным URL
     function generateRoomQR(code) {
-        const url = `${SOCKET_URL}/send.html?room=${code}`;
+        const url = `${APP_URL}/recv.html?room=${code}`;
         qrContainer.innerHTML = '';
         new QRCode(qrContainer, {
             text: url,
