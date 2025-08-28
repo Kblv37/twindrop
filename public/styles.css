@@ -226,13 +226,14 @@ body.theme-premium {
 }
 
 .qr {
-  width: 256px;
-  height: 256px;
+  width: auto;
+  height: auto;
   background: rgba(255, 255, 255, 0.6);
   border: 1px dashed rgba(255, 255, 255, 0.14);
   display: grid;
   place-items: center;
   overflow: hidden;
+  padding: 10px
 }
 
 .fade-target {
