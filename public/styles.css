@@ -231,6 +231,7 @@ body.theme-premium {
   background: rgba(255, 255, 255, 0.6);
   border: 1px dashed rgba(255, 255, 255, 0.14);
   display: grid;
+  border-radius: 4px;
   place-items: center;
   overflow: hidden;
   padding: 10px
