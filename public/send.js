@@ -1,30 +1,34 @@
-// send.js — отправитель: вводит код (или приходит с ?room=) и шлёт файл
+// send.js — фронт для отправителя с подключением к Render
 const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
 (function () {
     const codeInput = $('#codeInput');
-    const joinBtn   = $('#joinBtn');
-    const sendUI    = $('#sendUI');
+    const joinBtn = $('#joinBtn');
+    const sendUI = $('#sendUI');
     const fileInput = $('#file');
-    const sendBtn   = $('#sendBtn');
-    const sendBar   = $('#sendBar');
-    const sendText  = $('#sendText');
-    const statusEl  = $('#status');
+    const sendBtn = $('#sendBtn');
+    const sendBar = $('#sendBar');
+    const sendText = $('#sendText');
+    const statusEl = $('#status');
+    const qrContainer = $('#qrContainer'); // элемент для QR-кода
 
-    // если пришли по ссылке из QR — код уже в URL
-    const q = new URLSearchParams(location.search);
-    const prefill = (q.get('room') || '').replace(/\D/g, '').padStart(6, '0');
-    if (prefill.length === 6) {
-        codeInput.value = prefill;
-        join();
-    }
+    const q = parseQuery();
+    if (q.room) codeInput.value = q.room;
 
     let peer;
     let code;
 
-    joinBtn.onclick = join;
-    codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
+    // Генерация QR-кода с публичным URL Render
+    function generateRoomQR(code) {
+        const url = `${SOCKET_URL}/send.html?room=${code}`;
+        qrContainer.innerHTML = '';
+        new QRCode(qrContainer, {
+            text: url,
+            width: 200,
+            height: 200
+        });
+    }
 
     function join() {
         code = (codeInput.value || '').replace(/\D/g, '').padStart(6, '0');
@@ -32,37 +36,49 @@ const socket = io(SOCKET_URL);
             setStatus(statusEl, 'Введите корректный 6-значный код.');
             return;
         }
-        setStatus(statusEl, `Подключаемся к комнате ${code}…`);
+        setStatus(statusEl, 'Подключаемся к комнате…');
         socket.emit('join-room', { code });
+
+        generateRoomQR(code);
     }
 
-    // события от сервера
+    joinBtn.onclick = join;
+    codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
+
+    // События от сервера
+    socket.on('peer-joined', () => { /* первый участник игнорирует */ });
+
     socket.on('room-size', ({ size }) => {
         if (!code) return;
         if (size === 1) {
-            setStatus(statusEl, 'Ожидание получателя… (проверьте код)');
+            setStatus(statusEl, 'Ожидание получателя…');
         } else if (size === 2 && !peer) {
             setStatus(statusEl, 'Получатель на месте. Устанавливаем P2P…');
 
+            // создаём P2P соединение
             peer = createPeer({
                 initiator: true,
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ],
                 onSignal: (data) => socket.emit('signal', { code, data }),
                 onConnect: () => {
-                    setStatus(statusEl, 'P2P установлено. Можно отправлять файл.');
+                    setStatus(statusEl, 'P2P соединение установлено. Можно отправлять файл.');
                     sendBtn.disabled = !fileInput.files?.length;
-                    sendUI.style.display = 'block';
                 },
-                onData: () => {},
+                onData: () => { },
                 onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
-                onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + (e?.message || e))
+                onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
             });
+            sendUI.style.display = 'block';
         }
     });
 
     socket.on('signal', (data) => { if (peer) peer.handleSignal(data); });
     socket.on('room-full', () => setStatus(statusEl, 'Комната уже занята двумя участниками.'));
 
-    // управление файлом
+    // Управление файлом
     fileInput.addEventListener('change', () => {
         sendBtn.disabled = !(fileInput.files && fileInput.files.length);
     });
@@ -75,7 +91,6 @@ const socket = io(SOCKET_URL);
         const file = fileInput.files[0];
         if (!file) return;
 
-        // метаданные
         peer.channel().send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
 
         const reader = file.stream().getReader();
@@ -99,7 +114,7 @@ const socket = io(SOCKET_URL);
 
     function waitForBufferLow(dc) {
         return new Promise((resolve) => {
-            const threshold = 1 * 1024 * 1024; // 1MB водяной знак буфера
+            const threshold = 1 * 1024 * 1024;
             if (dc.bufferedAmount < threshold) return resolve();
             const check = () => {
                 if (dc.bufferedAmount < threshold) {
@@ -107,7 +122,7 @@ const socket = io(SOCKET_URL);
                     resolve();
                 }
             };
-            try { dc.bufferedAmountLowThreshold = threshold; } catch {}
+            try { dc.bufferedAmountLowThreshold = threshold; } catch { }
             dc.addEventListener('bufferedamountlow', check);
             setTimeout(check, 50);
         });
