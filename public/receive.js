@@ -17,7 +17,7 @@ const socket = io(SOCKET_URL);
     codeEl.textContent = code;
 
     // QR ведёт на публичный URL Render
-    const url = `${SOCKET_URL}/send.html?room=${code}`;
+    const url = `https://twindrop.netlify.app/send.html?room=${code}`;
     new QRCode(qrContainer, { text: url, width: 200, height: 200 });
 
     // Копирование кода
