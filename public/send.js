@@ -1,90 +1,73 @@
-// send.js — фронт для отправителя с подключением к Render
-const SOCKET_URL = 'https://twindrop.onrender.com'; // сервер сигналинга (socket.io)
-const APP_URL = 'https://twindrop.onrender.com';   // URL, который сканирует получатель
+// send.js — фронт для отправителя
+const SOCKET_URL = 'https://twindrop.onrender.com';
+const APP_URL = 'https://twindrop.onrender.com'; // твой домен/Render URL
 
 const socket = io(SOCKET_URL);
 
-(function () {
-    const codeInput = $('#codeInput');
-    const joinBtn = $('#joinBtn');
+(async function () {
     const sendUI = $('#sendUI');
     const fileInput = $('#file');
     const sendBtn = $('#sendBtn');
     const sendBar = $('#sendBar');
     const sendText = $('#sendText');
     const statusEl = $('#status');
-    const qrContainer = $('#qrContainer'); // элемент для QR-кода
-
-    const q = parseQuery();
-    if (q.room) codeInput.value = q.room;
+    const qrContainer = $('#qrContainer');
 
     let peer;
     let code;
 
-    // Генерация QR-кода с публичным URL
-    function generateRoomQR(code) {
-        const url = `${APP_URL}/recv.html?room=${code}`;
-        qrContainer.innerHTML = '';
-        new QRCode(qrContainer, {
-            text: url,
-            width: 200,
-            height: 200
-        });
-    }
+    // 1. создаём комнату на сервере
+    const r = await fetch(`${SOCKET_URL}/api/new-room`);
+    const { code: newCode } = await r.json();
+    code = newCode;
 
-    function join() {
-        code = (codeInput.value || '').replace(/\D/g, '').padStart(6, '0');
-        if (code.length !== 6) {
-            setStatus(statusEl, 'Введите корректный 6-значный код.');
-            return;
-        }
-        setStatus(statusEl, 'Подключаемся к комнате…');
-        socket.emit('join-room', { code });
+    setStatus(statusEl, `Ваша комната: ${code}`);
 
-        generateRoomQR(code);
-    }
+    // 2. генерируем QR с правильной ссылкой
+    const url = `${APP_URL}/receive.html?id=${code}`;
+    qrContainer.innerHTML = '';
+    new QRCode(qrContainer, {
+        text: url,
+        width: 220,
+        height: 220,
+        correctLevel: QRCode.CorrectLevel.H
+    });
 
-    joinBtn.onclick = join;
-    codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
+    // 3. присоединяемся к комнате
+    socket.emit('join-room', { code });
 
-    // События от сервера
-    socket.on('peer-joined', () => { /* первый участник игнорирует */ });
-
+    // события от сервера
     socket.on('room-size', ({ size }) => {
-        if (!code) return;
         if (size === 1) {
             setStatus(statusEl, 'Ожидание получателя…');
         } else if (size === 2 && !peer) {
-            setStatus(statusEl, 'Получатель на месте. Устанавливаем P2P…');
+            setStatus(statusEl, 'Получатель подключился. Устанавливаем P2P…');
 
-            // создаём P2P соединение
             peer = createPeer({
                 initiator: true,
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
-                ],
                 onSignal: (data) => socket.emit('signal', { code, data }),
                 onConnect: () => {
-                    setStatus(statusEl, 'P2P соединение установлено. Можно отправлять файл.');
+                    setStatus(statusEl, 'P2P установлено. Выберите файл.');
                     sendBtn.disabled = !fileInput.files?.length;
                 },
                 onData: () => { },
                 onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
-                onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
+                onError: (e) => setStatus(statusEl, 'Ошибка: ' + e?.message)
             });
+
             sendUI.style.display = 'block';
         }
     });
 
     socket.on('signal', (data) => { if (peer) peer.handleSignal(data); });
-    socket.on('room-full', () => setStatus(statusEl, 'Комната уже занята двумя участниками.'));
+    socket.on('room-full', () => setStatus(statusEl, 'Комната переполнена.'));
 
-    // Управление файлом
+    // выбор файла
     fileInput.addEventListener('change', () => {
         sendBtn.disabled = !(fileInput.files && fileInput.files.length);
     });
 
+    // отправка файла
     sendBtn.onclick = async () => {
         if (!peer || !peer.channel() || peer.channel().readyState !== 'open') {
             setStatus(statusEl, 'Канал ещё не готов.');

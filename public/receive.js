@@ -1,43 +1,62 @@
-// receive.js — фронт для получателя с подключением к Render
+// receive.js — фронт для получателя
 const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
 (async function () {
-    const codeEl = $('#code');
-    const copyBtn = $('#copyCode');
     const statusEl = $('#status');
     const recvBar = $('#recvBar');
     const recvText = $('#recvText');
     const downloads = $('#downloads');
-    const qrContainer = $('#qr');
 
-    // Получаем код комнаты от сервера
-    const r = await fetch(`${SOCKET_URL}/api/new-room`);
-    const { code } = await r.json();
-    codeEl.textContent = code;
+    // читаем id из URL (?id=123456)
+    const params = new URLSearchParams(location.search);
+    const code = params.get('id');
+    if (!code) {
+        setStatus(statusEl, 'Ошибка: нет ID комнаты.');
+        return;
+    }
 
-    // --- QR: короче и надёжнее ---
-    const url = `${SOCKET_URL}/?room=${code}`;
-    qrContainer.innerHTML = '';
-    new QRCode(qrContainer, {
-        text: url,
-        width: 200,
-        height: 200,
-        correctLevel: QRCode.CorrectLevel.H
-    });
-
-    // Копирование кода
-    copyBtn.onclick = async () => {
-        await navigator.clipboard.writeText(code);
-        copyBtn.textContent = 'Скопировано!';
-        setTimeout(() => copyBtn.textContent = 'Скопировать', 1200);
-    };
-
+    setStatus(statusEl, `Подключаемся к комнате ${code}…`);
     socket.emit('join-room', { code });
 
+    let peer;
     let fileChunks = [];
     let expectedSize = 0;
     let fileName = 'file';
+
+    socket.on('peer-joined', () => {
+        setStatus(statusEl, 'Отправитель подключился. Устанавливаем P2P…');
+
+        peer = createPeer({
+            initiator: false,
+            onSignal: (data) => socket.emit('signal', { code, data }),
+            onConnect: () => setStatus(statusEl, 'P2P установлено. Ожидаем файл…'),
+            onData: (data) => {
+                if (typeof data === 'string') {
+                    try {
+                        const meta = JSON.parse(data);
+                        if (meta.__meta === 'file') {
+                            fileName = meta.name || 'file';
+                            expectedSize = meta.size || 0;
+                            recvText.textContent = `Получение: ${fileName}`;
+                            setBar(recvBar, 0);
+                            return;
+                        }
+                    } catch {}
+                }
+                if (data instanceof ArrayBuffer) {
+                    fileChunks.push(data);
+                    saveIfComplete();
+                }
+            },
+            onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
+            onError: (e) => setStatus(statusEl, 'Ошибка: ' + e?.message)
+        });
+    });
+
+    socket.on('signal', (data) => { if (peer) peer.handleSignal(data); });
+    socket.on('room-size', ({ size }) => { if (size < 2) setStatus(statusEl, 'Ждём отправителя…'); });
+    socket.on('peer-left', () => setStatus(statusEl, 'Отправитель отключился.'));
 
     function saveIfComplete() {
         const total = fileChunks.reduce((s, b) => s + b.byteLength, 0);
@@ -59,50 +78,4 @@ const socket = io(SOCKET_URL);
             expectedSize = 0;
         }
     }
-
-    let peer;
-
-    socket.on('peer-joined', () => {
-        setStatus(statusEl, 'Отправитель подключился. Устанавливаем P2P…');
-
-        peer = createPeer({
-            initiator: false,
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ],
-            onSignal: (data) => socket.emit('signal', { code, data }),
-            onConnect: () => setStatus(statusEl, 'P2P соединение установлено. Ожидаем файл…'),
-            onData: (data) => {
-                if (typeof data === 'string') {
-                    try {
-                        const meta = JSON.parse(data);
-                        if (meta.__meta === 'file') {
-                            fileName = meta.name || 'file';
-                            expectedSize = meta.size || 0;
-                            recvText.textContent = `Получение: ${fileName}`;
-                            setBar(recvBar, 0);
-                            return;
-                        }
-                    } catch {}
-                }
-                if (data instanceof ArrayBuffer) {
-                    fileChunks.push(data);
-                    saveIfComplete();
-                }
-            },
-            onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
-            onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
-        });
-    });
-
-    socket.on('signal', (data) => {
-        if (peer) peer.handleSignal(data);
-    });
-
-    socket.on('room-size', ({ size }) => {
-        if (size < 2) setStatus(statusEl, 'Ждём отправителя…');
-    });
-
-    socket.on('peer-left', () => setStatus(statusEl, 'Отправитель отключился.'));
 })();
