@@ -36,11 +36,11 @@ const socket = io(SOCKET_URL);
             const data = await res.json();
 
             if (data.exists) {
-                setStatus(statusEl, 'Комната найдена ✅');
+                setStatus(statusEl, 'Комната найдена');
                 roomExists = true;
                 joinBtn.disabled = false;
             } else {
-                setStatus(statusEl, 'Комната не найдена ❌');
+                setStatus(statusEl, 'Комната не найдена');
                 roomExists = false;
                 joinBtn.disabled = true;
             }
