@@ -36,7 +36,7 @@
   --progress-bg: rgba(255, 255, 255, 0.08);
   --progress-fill: linear-gradient(90deg, #6ea8fe, #9ec5ff);
   --focus-ring: 0 0 0 3px rgba(110, 168, 254, 0.4);
-  --qr-size: 240px;
+  /* --qr-size: 240px; */
 }
 
 /* Мобильный вариант оттенков — мягче по контрасту */
@@ -226,11 +226,11 @@ body.theme-premium {
 }
 
 .qr {
-  width: var(--qr-size);
-  height: var(--qr-size);
+  width: 210px;
+  height: 210px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px dashed rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-sm);
+  /* border-radius: var(--radius-sm); */
   display: grid;
   place-items: center;
   overflow: hidden;
