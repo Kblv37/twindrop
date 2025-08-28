@@ -1,4 +1,4 @@
-// send.js — фронт для отправителя
+// send.js — фронт для отправителя с подключением к Render
 const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
@@ -13,51 +13,39 @@ const socket = io(SOCKET_URL);
     const statusEl = $('#status');
     const qrContainer = $('#qrContainer'); // элемент для QR-кода
 
+    const q = parseQuery();
+    if (q.room) codeInput.value = q.room;
+
     let peer;
     let code;
 
-    // --- Подключение к комнате ---
+
     function join() {
         code = (codeInput.value || '').replace(/\D/g, '').padStart(6, '0');
-
         if (code.length !== 6) {
             setStatus(statusEl, 'Введите корректный 6-значный код.');
             return;
         }
+        setStatus(statusEl, 'Подключаемся к комнате…');
+        socket.emit('join-room', { code });
 
-        setStatus(statusEl, 'Проверяем комнату...');
-        socket.emit('check-room', { code }); // отправляем на сервер запрос на проверку комнаты
+        generateRoomQR(code);
     }
 
     joinBtn.onclick = join;
     codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
 
-    // --- Ответ от сервера при проверке комнаты ---
-    socket.on('check-room-result', ({ exists }) => {
-        if (!exists) {
-            setStatus(statusEl, 'Такой комнаты не существует.');
-            return;
-        }
-
-        // Если комната есть → подключаемся
-        setStatus(statusEl, 'Подключаемся к комнате…');
-        socket.emit('join-room', { code });
-
-        // Генерация QR
-        generateRoomQR(code);
-    });
-
-    // --- События от сервера ---
-    socket.on('peer-joined', () => { /* для отправителя ничего не делаем */ });
+    // События от сервера
+    socket.on('peer-joined', () => { /* первый участник игнорирует */ });
 
     socket.on('room-size', ({ size }) => {
         if (!code) return;
-
         if (size === 1) {
             setStatus(statusEl, 'Ожидание получателя…');
         } else if (size === 2 && !peer) {
-            setStatus(statusEl, 'Получатель подключился. Устанавливаем P2P…');
+            setStatus(statusEl, 'Получатель на месте. Устанавливаем P2P…');
 
+            // создаём P2P соединение
             peer = createPeer({
                 initiator: true,
                 iceServers: [
@@ -73,7 +61,6 @@ const socket = io(SOCKET_URL);
                 onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
                 onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
             });
-
             sendUI.style.display = 'block';
         }
     });
@@ -81,7 +68,7 @@ const socket = io(SOCKET_URL);
     socket.on('signal', (data) => { if (peer) peer.handleSignal(data); });
     socket.on('room-full', () => setStatus(statusEl, 'Комната уже занята двумя участниками.'));
 
-    // --- Отправка файла ---
+    // Управление файлом
     fileInput.addEventListener('change', () => {
         sendBtn.disabled = !(fileInput.files && fileInput.files.length);
     });
@@ -91,7 +78,6 @@ const socket = io(SOCKET_URL);
             setStatus(statusEl, 'Канал ещё не готов.');
             return;
         }
-
         const file = fileInput.files[0];
         if (!file) return;
 
@@ -129,16 +115,6 @@ const socket = io(SOCKET_URL);
             try { dc.bufferedAmountLowThreshold = threshold; } catch { }
             dc.addEventListener('bufferedamountlow', check);
             setTimeout(check, 50);
-        });
-    }
-
-    // --- Генерация QR ---
-    function generateRoomQR(code) {
-        qrContainer.innerHTML = '';
-        new QRCode(qrContainer, {
-            text: `${location.origin}/receive.html?room=${code}`,
-            width: 180,
-            height: 180
         });
     }
 })();
