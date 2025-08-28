@@ -22,7 +22,7 @@
     <div class="header-inner container">
       <a class="brand" href="/">P2P Share</a>
       <nav class="nav" aria-label="Основная навигация">
-        <a class="nav-link ripple" href="/receive">Получить</a>
+        <a class="nav-link ripple" href="/">Получить</a>
         <a class="nav-link ripple" href="/send">Отправить</a>
       </nav>
     </div>
@@ -113,16 +113,6 @@
   <!-- UI‑скрипты: риппл, фокус, дропзона, валидация кода -->
   <script>
     const PRM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // document.addEventListener('click', (e) => {
-    //   const btn = e.target.closest('.ripple');
-    //   if (!btn || PRM) return;
-    //   const r = btn.getBoundingClientRect();
-    //   btn.style.setProperty('--ripple-x', (e.clientX - r.left) + 'px');
-    //   btn.style.setProperty('--ripple-y', (e.clientY - r.top) + 'px');
-    //   btn.classList.remove('is-rippling'); void btn.offsetWidth; btn.classList.add('is-rippling');
-    //   setTimeout(() => btn.classList.remove('is-rippling'), 450);
-    // }, { passive: true });
 
     document.addEventListener('keydown', (e) => { if (e.key === 'Tab') document.documentElement.classList.add('kbd-nav'); }, { passive: true });
     document.addEventListener('mousedown', () => { document.documentElement.classList.remove('kbd-nav'); }, { passive: true });
