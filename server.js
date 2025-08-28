@@ -7,9 +7,12 @@ const cors = require('cors');
 
 const app = express();
 
-// Разрешаем CORS для фронтенда (Netlify)
+// Разрешаем CORS для фронтенда (Netlify + локально)
 app.use(cors({
-    origin: 'https://twindrop.netlify.app', // можно заменить на '*' для тестов
+    origin: [
+        'https://twindrop.netlify.app',
+        'http://localhost:3000'
+    ],
     methods: ['GET', 'POST']
 }));
 
@@ -20,7 +23,10 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: 'https://twindrop.netlify.app', // фронтенд
+        origin: [
+            'https://twindrop.netlify.app',
+            'http://localhost:3000'
+        ],
         methods: ['GET', 'POST']
     }
 });
@@ -41,6 +47,15 @@ app.get('/api/new-room', (req, res) => {
     } while (rooms.has(code));
     rooms.set(code, new Set());
     res.json({ code });
+});
+
+// REST API: проверить комнату
+app.get('/api/check-room/:code', (req, res) => {
+    const code = req.params.code;
+    if (!rooms.has(code)) {
+        return res.json({ exists: false, size: 0 });
+    }
+    res.json({ exists: true, size: rooms.get(code).size });
 });
 
 // Socket.IO события
@@ -83,8 +98,11 @@ io.on('connection', (socket) => {
         // уведомляем оставшегося участника
         socket.to(code).emit('peer-left');
 
-        if (set.size === 0) rooms.delete(code);
-        else io.to(code).emit('room-size', { size: set.size });
+        if (set.size === 0) {
+            rooms.delete(code);
+        } else {
+            io.to(code).emit('room-size', { size: set.size });
+        }
     });
 });
 
