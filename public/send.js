@@ -28,8 +28,6 @@ const socket = io(SOCKET_URL);
         }
         setStatus(statusEl, 'Подключаемся к комнате…');
         socket.emit('join-room', { code });
-
-        generateRoomQR(code);
     }
 
     joinBtn.onclick = join;
