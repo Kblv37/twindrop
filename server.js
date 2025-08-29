@@ -57,6 +57,12 @@ io.on('connection', (socket) => {
         if (!rooms.has(code)) rooms.set(code, new Set());
         const set = rooms.get(code);
 
+        // если этот сокет уже в комнате — игнорируем
+        if (set.has(socket.id)) {
+            socket.emit('already-joined');
+            return;
+        }
+
         // ограничение до 2 участников
         if (set.size >= 2) {
             socket.emit('room-full');

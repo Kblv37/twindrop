@@ -63,6 +63,12 @@ const socket = io(SOCKET_URL);
     codeInput.addEventListener('input', checkRoom);
 
     function join() {
+        // если уже есть peer или мы уже в комнате — выходим
+        if (peer || socket.data?.joined) {
+            setStatus(statusEl, 'Вы уже подключены.');
+            return;
+        }
+
         code = (codeInput.value || '').replace(/\D/g, '').padStart(6, '0');
         if (!roomExists) {
             setStatus(statusEl, 'Сначала введите существующий код.');
@@ -71,7 +77,11 @@ const socket = io(SOCKET_URL);
 
         setStatus(statusEl, 'Подключаемся к комнате…');
         socket.emit('join-room', { code });
+        socket.data = { joined: true }; // ставим флаг
+        joinBtn.disabled = true;        // блокируем кнопку
+        joinBtn.textContent = 'Подключено';
     }
+
 
     joinBtn.onclick = join;
     codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
