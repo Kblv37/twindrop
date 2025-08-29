@@ -4,6 +4,7 @@ const API_URL = SOCKET_URL + '/api'; // REST API
 const socket = io(SOCKET_URL);
 
 (function () {
+    const TAG = '[send]';
     const codeInput = $('#codeInput');
     const joinBtn = $('#joinBtn');
     const sendUI = $('#sendUI');
@@ -12,15 +13,13 @@ const socket = io(SOCKET_URL);
     const sendBar = $('#sendBar');
     const sendText = $('#sendText');
     const statusEl = $('#status');
-    const qrContainer = $('#qrContainer'); // элемент для QR-кода
 
     const q = parseQuery();
     if (q.room) {
         codeInput.value = q.room;
-        // ждём пока input реально обновится и сразу проверяем комнату
         setTimeout(async () => {
-            await checkRoom(); // сначала проверяем через API
-            if (roomExists) join(); // если есть — сразу подключаемся
+            await checkRoom();
+            if (roomExists) join();
         }, 0);
     }
 
@@ -28,7 +27,25 @@ const socket = io(SOCKET_URL);
     let code;
     let roomExists = false; // хранение статуса
 
-    // 🔎 Проверка комнаты в реальном времени
+    // ACK резолверы: ожидаем подтверждение по имени файла
+    const ackResolvers = new Map();
+    function waitForAck(name, timeout = 15000) {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                ackResolvers.delete(name);
+                reject(new Error('ACK timeout'));
+            }, timeout);
+            ackResolvers.set(name, (msg) => {
+                clearTimeout(timer);
+                ackResolvers.delete(name);
+                resolve(msg);
+            });
+        });
+    }
+
+    function slog(...args){ console.log(TAG, ...args); }
+
+    // Проверка комнаты
     async function checkRoom() {
         const val = (codeInput.value || '').replace(/\D/g, '').padStart(6, '0');
         if (val.length !== 6) {
@@ -59,11 +76,9 @@ const socket = io(SOCKET_URL);
         }
     }
 
-    // Слушатель для ввода кода (реальное время)
     codeInput.addEventListener('input', checkRoom);
 
     function join() {
-        // если уже есть peer или мы уже в комнате — выходим
         if (peer || socket.data?.joined) {
             setStatus(statusEl, 'Вы уже подключены.');
             return;
@@ -77,26 +92,28 @@ const socket = io(SOCKET_URL);
 
         setStatus(statusEl, 'Подключаемся к комнате…');
         socket.emit('join-room', { code });
-        socket.data = { joined: true }; // ставим флаг
-        joinBtn.disabled = true;        // блокируем кнопку
+        socket.data = { joined: true };
+        joinBtn.disabled = true;
         joinBtn.textContent = 'Подключено';
     }
-
 
     joinBtn.onclick = join;
     codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
 
-    // События от сервера
-    socket.on('peer-joined', () => { /* первый участник игнорирует */ });
+    // socket events — добавим логи
+    socket.on('connect', () => slog('socket connected', socket.id));
+    socket.on('disconnect', (reason) => slog('socket disconnected', reason));
+    socket.on('room-full', () => setStatus(statusEl, 'Комната уже занята двумя участниками.'));
 
     socket.on('room-size', ({ size }) => {
+        slog('room-size', size);
         if (!code) return;
         if (size === 1) {
             setStatus(statusEl, 'Ожидание получателя…');
         } else if (size === 2 && !peer) {
             setStatus(statusEl, 'Получатель на месте. Устанавливаем P2P…');
 
-            // создаём P2P соединение
+            // создаём P2P соединение с обработкой входящих сообщений (ACKs и логи)
             peer = createPeer({
                 initiator: true,
                 iceServers: [
@@ -105,38 +122,61 @@ const socket = io(SOCKET_URL);
                 ],
                 onSignal: (data) => socket.emit('signal', { code, data }),
                 onConnect: () => {
+                    slog('datachannel open');
                     setStatus(statusEl, 'P2P соединение установлено. Можно отправлять файл.');
                     sendBtn.disabled = !fileInput.files?.length;
                 },
-                onData: () => { },
-                onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
-                onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
+                onData: (data) => {
+                    slog('onData received', data);
+                    // контролируем текстовые сообщения (ACK / прогресс)
+                    if (typeof data === 'string') {
+                        try {
+                            const msg = JSON.parse(data);
+                            if (msg.__meta === 'ack') {
+                                slog('ACK from receiver', msg);
+                                const resolver = ackResolvers.get(msg.name);
+                                if (resolver) resolver(msg);
+                            } else {
+                                slog('ctrl message', msg);
+                            }
+                        } catch (e) {
+                            slog('non-json string', data);
+                        }
+                    } else {
+                        slog('unexpected binary on sender', data && data.byteLength);
+                    }
+                },
+                onClose: () => {
+                    slog('peer connection closed');
+                    setStatus(statusEl, 'Соединение закрыто.');
+                },
+                onError: (e) => {
+                    slog('peer error', e);
+                    setStatus(statusEl, 'Ошибка соединения: ' + e?.message);
+                }
             });
+
             sendUI.style.display = 'block';
         }
     });
 
     socket.on('signal', (data) => { if (peer) peer.handleSignal(data); });
-    socket.on('room-full', () => setStatus(statusEl, 'Комната уже занята двумя участниками.'));
-
     socket.on('peer-left', () => {
+        slog('peer-left event');
         setStatus(statusEl, 'Получатель отключился. Соединение разорвано.');
-
-        // закрываем peer и сбрасываем
         resetPeer();
-
-        // даём возможность переподключиться
         socket.data.joined = false;
         joinBtn.disabled = false;
         joinBtn.textContent = 'Подключиться';
-        sendUI.style.display = 'none'; // скрываем интерфейс отправки
+        sendUI.style.display = 'none';
     });
 
-    // Управление файлом
+    // file input -> activates send button
     fileInput.addEventListener('change', () => {
         sendBtn.disabled = !(fileInput.files && fileInput.files.length);
     });
 
+    // send logic: отправляем по файлам, логируем и ждём ACK по каждому файлу
     sendBtn.onclick = async () => {
         if (!peer || !peer.channel() || peer.channel().readyState !== 'open') {
             setStatus(statusEl, 'Канал ещё не готов.');
@@ -147,11 +187,13 @@ const socket = io(SOCKET_URL);
         if (!files || files.length === 0) return;
 
         for (const file of files) {
-            // метаданные о файле
+            slog('start sending file', file.name, file.size);
+            // отправляем метаданные
             peer.channel().send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
-
             const reader = file.stream().getReader();
             let sent = 0;
+            const CHUNK_LOG_INTERVAL = 1024 * 1024; // лог каждые 1MB
+            let lastLogged = 0;
 
             setBar(sendBar, 0);
             sendText.textContent = `Отправка: ${file.name}`;
@@ -159,36 +201,40 @@ const socket = io(SOCKET_URL);
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
+                // flow control - ждём если буфер большой
                 await waitForBufferLow(peer.channel());
                 peer.channel().send(value.buffer);
                 sent += value.byteLength;
+
+                // логи
+                if (sent - lastLogged >= CHUNK_LOG_INTERVAL || sent === file.size) {
+                    lastLogged = sent;
+                    slog(`sent ${sent}/${file.size} bytes (buffered=${peer.channel().bufferedAmount})`);
+                }
+
                 setBar(sendBar, sent / file.size);
                 sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
             }
 
-            // после всех чанков отправляем "файл закончен"
+            // сигнализируем что файл полностью отправлен
             peer.channel().send(JSON.stringify({ __meta: 'file-complete', name: file.name, size: file.size }));
+            slog('file chunks sent, waiting for ACK', file.name);
 
             setStatus(statusEl, `Ожидание подтверждения доставки для: ${file.name}...`);
 
-            // ждём ack
-            await new Promise((resolve) => {
-                const handler = (event) => {
-                    try {
-                        const msg = JSON.parse(event.data);
-                        if (msg.__meta === 'ack' && msg.name === file.name) {
-                            setStatus(statusEl, `Файл ${file.name} успешно доставлен ✅`);
-                            peer.channel().removeEventListener('message', handler);
-                            resolve();
-                        }
-                    } catch (e) { /* не JSON — игнор */ }
-                };
-                peer.channel().addEventListener('message', handler);
-            });
-
+            // ждём ACK (timeout 15s)
+            try {
+                const ack = await waitForAck(file.name, 15000);
+                slog('ACK received for file', file.name, ack);
+                setStatus(statusEl, `Файл ${file.name} успешно доставлен ✅`);
+            } catch (err) {
+                slog('ACK timeout for file', file.name);
+                setStatus(statusEl, `Нет подтверждения доставки для ${file.name} — возможно потеря связи.`);
+                // решаем: пробуем продолжить к следующему файлу или остановиться — сейчас продолжаем
+            }
         }
 
-        setStatus(statusEl, 'Все файлы отправлены.');
+        setStatus(statusEl, 'Все файлы обработаны (отправлены/ожидают ACK).');
     };
 
     function waitForBufferLow(dc) {
