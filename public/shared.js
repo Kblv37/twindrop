@@ -6,8 +6,8 @@ function setStatus(el, text) {
     el.textContent = text || '';
 }
 
-function setBar(bar, ratio) { 
-    bar.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`; 
+function setBar(bar, ratio) {
+    bar.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
 }
 
 // Простая обёртка над RTCPeerConnection + data channel
@@ -68,7 +68,34 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
 
     if (initiator) startNegotiation();
 
-    return { pc, channel: () => channel, handleSignal };
+    if (initiator) startNegotiation();
+
+    function isOpen() {
+        return channel && channel.readyState === 'open';
+    }
+
+    function send(data) {
+        if (isOpen()) {
+            channel.send(data);
+            return true;
+        }
+        return false;
+    }
+
+    function destroy() {
+        try { channel?.close(); } catch { }
+        try { pc.close(); } catch { }
+    }
+
+    return {
+        pc,
+        channel: () => channel,
+        handleSignal,
+        isOpen,
+        send,
+        destroy
+    };
+
 }
 
 function parseQuery() {

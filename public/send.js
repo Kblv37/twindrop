@@ -164,7 +164,10 @@ const socket = io(SOCKET_URL);
                 const { value, done } = await reader.read();
                 if (done) break;
                 await waitForBufferLow(peer.channel());
-                peer.channel().send(value.buffer);
+
+                const chunk = value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+                peer.channel().send(chunk);
+
                 sent += value.byteLength;
                 setBar(sendBar, sent / file.size);
                 sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
@@ -197,7 +200,7 @@ const socket = io(SOCKET_URL);
 
     function waitForBufferLow(dc) {
         return new Promise((resolve) => {
-            const threshold = 1 * 1024 * 1024;
+            const threshold = 256 * 1024; // вместо 1 МБ
             if (dc.bufferedAmount < threshold) return resolve();
             const check = () => {
                 if (dc.bufferedAmount < threshold) {

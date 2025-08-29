@@ -82,6 +82,7 @@ const socket = io(SOCKET_URL);
                 disconnectBtn.style.display = 'inline-block';
             },
 
+            // receive.js — фрагмент внутри onData:
             onData: (data) => {
                 if (typeof data === 'string') {
                     try {
@@ -93,18 +94,25 @@ const socket = io(SOCKET_URL);
                             setBar(recvBar, 0);
                             return;
                         }
-                    } catch { }
+                        if (meta.__meta === 'file-complete') {
+                            // Отправляем ACK ровно один раз по завершении файла
+                            const dc = peer?.channel?.();
+                            if (dc && dc.readyState === 'open') {
+                                dc.send(JSON.stringify({ __meta: 'ack', name: fileName }));
+                            }
+                            return;
+                        }
+                    } catch {
+                        // не-JSON — игнор
+                    }
                 }
+
                 if (data instanceof ArrayBuffer) {
                     fileChunks.push(data);
                     saveIfComplete();
-
-                    // <-- ДОБАВЛЯЕМ: отправляем подтверждение отправителю
-                    if (peer && peer.connected) {
-                        peer.send(JSON.stringify({ __ack: true, received: fileChunks.length }));
-                    }
                 }
             },
+
             onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
             onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
         });
