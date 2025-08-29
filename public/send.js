@@ -14,6 +14,9 @@ const socket = io(SOCKET_URL);
     const statusEl = $('#status');
     const qrContainer = $('#qrContainer'); // элемент для QR-кода
 
+    const disconnectBtn = $('#disconnectBtn');
+    disconnectBtn.style.display = 'none'; // по умолчанию скрыта
+
     const q = parseQuery();
     if (q.room) {
         codeInput.value = q.room;
@@ -107,6 +110,7 @@ const socket = io(SOCKET_URL);
                 onConnect: () => {
                     setStatus(statusEl, 'P2P соединение установлено. Можно отправлять файл.');
                     sendBtn.disabled = !fileInput.files?.length;
+                    disconnectBtn.style.display = 'inline-block'; // показываем кнопку
                 },
                 onData: () => { },
                 onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
@@ -213,5 +217,19 @@ const socket = io(SOCKET_URL);
             peer = null;
         }
     }
+
+    // 🔘 Кнопка отключения соединения
+    disconnectBtn.onclick = () => {
+        resetPeer();
+        socket.emit('leave-room', { code });
+        setStatus(statusEl, 'Соединение завершено пользователем.');
+
+        disconnectBtn.style.display = 'none';
+        sendUI.style.display = 'none';
+
+        socket.data.joined = false;
+        joinBtn.disabled = false;
+        joinBtn.textContent = 'Подключиться';
+    };
 
 })();

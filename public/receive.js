@@ -11,6 +11,9 @@ const socket = io(SOCKET_URL);
     const downloads = $('#downloads');
     const qrContainer = $('#qr');
 
+    const disconnectBtn = $('#disconnectBtn');
+    disconnectBtn.style.display = 'none'; // скрыта изначально
+
     // Получаем код комнаты от сервера
     const r = await fetch(`${SOCKET_URL}/api/new-room`);
     const { code } = await r.json();
@@ -73,7 +76,12 @@ const socket = io(SOCKET_URL);
                 { urls: 'stun:stun1.l.google.com:19302' }
             ],
             onSignal: (data) => socket.emit('signal', { code, data }),
-            onConnect: () => setStatus(statusEl, 'P2P соединение установлено. Ожидаем файл…'),
+
+            onConnect: () => {
+                setStatus(statusEl, 'P2P соединение установлено. Ожидаем файл…');
+                disconnectBtn.style.display = 'inline-block';
+            },
+
             onData: (data) => {
                 if (typeof data === 'string') {
                     try {
@@ -127,5 +135,14 @@ const socket = io(SOCKET_URL);
             peer = null;
         }
     }
+
+    disconnectBtn.onclick = () => {
+        resetPeer();
+        socket.emit('leave-room', { code });
+        setStatus(statusEl, 'Соединение завершено пользователем.');
+        disconnectBtn.style.display = 'none';
+        recvBar.value = 0;
+        recvText.textContent = '';
+    };
 
 })();
