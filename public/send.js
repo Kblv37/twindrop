@@ -113,7 +113,7 @@ const socket = io(SOCKET_URL);
                     disconnectBtn.style.display = 'inline-block'; // показываем кнопку
                 },
                 onData: () => { },
-
+                onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
                 onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
             });
             sendUI.style.display = 'block';
