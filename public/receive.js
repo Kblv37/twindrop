@@ -85,7 +85,7 @@ const socket = io(SOCKET_URL);
                             setBar(recvBar, 0);
                             return;
                         }
-                    } catch {}
+                    } catch { }
                 }
                 if (data instanceof ArrayBuffer) {
                     fileChunks.push(data);
@@ -105,5 +105,22 @@ const socket = io(SOCKET_URL);
         if (size < 2) setStatus(statusEl, 'Ждём отправителя…');
     });
 
-    socket.on('peer-left', () => setStatus(statusEl, 'Отправитель отключился.'));
+    socket.on('peer-left', () => {
+        setStatus(statusEl, 'Отправитель отключился. Соединение разорвано.');
+
+        // закрываем peer и сбрасываем
+        resetPeer();
+
+        // Можно очистить прогрессбар/загрузки, чтобы не путать юзера
+        recvBar.value = 0;
+        recvText.textContent = '';
+    });
+
+    function resetPeer() {
+        if (peer) {
+            try { peer.destroy(); } catch { }
+            peer = null;
+        }
+    }
+
 })();

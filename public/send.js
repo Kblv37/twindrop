@@ -119,6 +119,19 @@ const socket = io(SOCKET_URL);
     socket.on('signal', (data) => { if (peer) peer.handleSignal(data); });
     socket.on('room-full', () => setStatus(statusEl, 'Комната уже занята двумя участниками.'));
 
+    socket.on('peer-left', () => {
+        setStatus(statusEl, 'Получатель отключился. Соединение разорвано.');
+
+        // закрываем peer и сбрасываем
+        resetPeer();
+
+        // даём возможность переподключиться
+        socket.data.joined = false;
+        joinBtn.disabled = false;
+        joinBtn.textContent = 'Подключиться';
+        sendUI.style.display = 'none'; // скрываем интерфейс отправки
+    });
+
     // Управление файлом
     fileInput.addEventListener('change', () => {
         sendBtn.disabled = !(fileInput.files && fileInput.files.length);
@@ -168,4 +181,12 @@ const socket = io(SOCKET_URL);
             setTimeout(check, 50);
         });
     }
+
+    function resetPeer() {
+        if (peer) {
+            try { peer.destroy(); } catch { }
+            peer = null;
+        }
+    }
+
 })();
