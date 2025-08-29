@@ -113,7 +113,16 @@ const socket = io(SOCKET_URL);
                     disconnectBtn.style.display = 'inline-block'; // показываем кнопку
                 },
                 onData: () => { },
-                onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
+                onClose: () => {
+                    setStatus(statusEl, 'Соединение закрыто удалённой стороной.');
+                    resetPeer();
+                    socket.data.joined = false;
+                    joinBtn.disabled = false;
+                    joinBtn.textContent = 'Подключиться';
+                    sendUI.style.display = 'none';
+                    disconnectBtn.style.display = 'none';
+                },
+
                 onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
             });
             sendUI.style.display = 'block';
