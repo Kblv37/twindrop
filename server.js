@@ -9,8 +9,10 @@ const app = express();
 
 // Разрешаем CORS для фронтенда (Netlify)
 app.use(cors({
-    origin: 'https://twindrop.netlify.app', // можно заменить на '*' для тестов
-    methods: ['GET', 'POST']
+    origin: ['https://twindrop.netlify.app'], // можно массивом
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type'], // важно!
+    credentials: true
 }));
 
 // Статика (для локального фронтенда, если нужно)
@@ -20,8 +22,10 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: 'https://twindrop.netlify.app', // фронтенд
-        methods: ['GET', 'POST']
+        origin: ['https://twindrop.netlify.app'],
+        methods: ['GET', 'POST'],
+        allowedHeaders: ['Content-Type'],
+        credentials: true
     }
 });
 
