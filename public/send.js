@@ -142,28 +142,34 @@ const socket = io(SOCKET_URL);
             setStatus(statusEl, 'Канал ещё не готов.');
             return;
         }
-        const file = fileInput.files[0];
-        if (!file) return;
 
-        peer.channel().send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
+        const files = fileInput.files;
+        if (!files || files.length === 0) return;
 
-        const reader = file.stream().getReader();
-        let sent = 0;
+        for (const file of files) {
+            // метаданные о файле
+            peer.channel().send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
 
-        setBar(sendBar, 0);
-        sendText.textContent = `Отправка: ${file.name}`;
+            const reader = file.stream().getReader();
+            let sent = 0;
 
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            await waitForBufferLow(peer.channel());
-            peer.channel().send(value.buffer);
-            sent += value.byteLength;
-            setBar(sendBar, sent / file.size);
-            sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            setBar(sendBar, 0);
+            sendText.textContent = `Отправка: ${file.name}`;
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                await waitForBufferLow(peer.channel());
+                peer.channel().send(value.buffer);
+                sent += value.byteLength;
+                setBar(sendBar, sent / file.size);
+                sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            }
+
+            setStatus(statusEl, `Файл ${file.name} отправлен.`);
         }
 
-        setStatus(statusEl, 'Файл отправлен.');
+        setStatus(statusEl, 'Все файлы отправлены.');
     };
 
     function waitForBufferLow(dc) {
