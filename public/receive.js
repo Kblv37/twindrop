@@ -4,7 +4,7 @@ const socket = io(SOCKET_URL);
 
 (async function () {
     const TAG = '[recv]';
-    function rlog(...args){ console.log(TAG, ...args); }
+    function rlog(...args) { console.log(TAG, ...args); }
 
     const codeEl = $('#code');
     const copyBtn = $('#copyCode');
@@ -114,6 +114,18 @@ const socket = io(SOCKET_URL);
                 if (data instanceof ArrayBuffer) {
                     fileChunks.push(data);
                     receivedBytes += data.byteLength;
+
+                    if (receivedBytes > 0 || (typeof meta !== 'undefined' && meta && meta.__meta === 'file-complete')) {
+                        peer && peer.channel() && peer.channel().send(JSON.stringify({
+                            __meta: 'ack',
+                            name: fileName,
+                            receivedBytes,
+                            chunks: fileChunks.length,
+                            ts: Date.now(),
+                            complete: (expectedSize && receivedBytes >= expectedSize) ? true : undefined
+                        }));
+                    }
+
                     rlog(`received chunk: ${data.byteLength} bytes — total ${receivedBytes}/${expectedSize}`);
                     saveIfComplete();
 
@@ -158,7 +170,7 @@ const socket = io(SOCKET_URL);
         resetPeer();
 
         // Можно очистить прогрессбар/загрузки, чтобы не путать юзера
-        try { setBar(recvBar, 0); } catch {}
+        try { setBar(recvBar, 0); } catch { }
         recvText.textContent = '';
     });
 
