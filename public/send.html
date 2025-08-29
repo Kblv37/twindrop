@@ -138,7 +138,6 @@
         dz.querySelector('.dz-sub').textContent = (file.size ? (Math.round(file.size/1024/1024*100)/100)+' MB' : 'Размер неизвестен');
         sendBtn && (sendBtn.disabled = false);
       };
-      dz.addEventListener('click', () => fileInput.click());
       dz.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }});
       ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, (e) => { e.preventDefault(); activate(true); }));
       ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, (e) => { e.preventDefault(); activate(false); }));
