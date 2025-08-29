@@ -90,6 +90,11 @@ const socket = io(SOCKET_URL);
                 if (data instanceof ArrayBuffer) {
                     fileChunks.push(data);
                     saveIfComplete();
+
+                    // <-- ДОБАВЛЯЕМ: отправляем подтверждение отправителю
+                    if (peer && peer.connected) {
+                        peer.send(JSON.stringify({ __ack: true, received: fileChunks.length }));
+                    }
                 }
             },
             onClose: () => setStatus(statusEl, 'Соединение закрыто.'),

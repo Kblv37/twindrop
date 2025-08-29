@@ -166,7 +166,26 @@ const socket = io(SOCKET_URL);
                 sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
             }
 
-            setStatus(statusEl, `Файл ${file.name} отправлен.`);
+            // после всех чанков отправляем "файл закончен"
+            peer.channel().send(JSON.stringify({ __meta: 'file-complete', name: file.name, size: file.size }));
+
+            setStatus(statusEl, `Ожидание подтверждения доставки для: ${file.name}...`);
+
+            // ждём ack
+            await new Promise((resolve) => {
+                const handler = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.__meta === 'ack' && msg.name === file.name) {
+                            setStatus(statusEl, `Файл ${file.name} успешно доставлен ✅`);
+                            peer.channel().removeEventListener('message', handler);
+                            resolve();
+                        }
+                    } catch (e) { /* не JSON — игнор */ }
+                };
+                peer.channel().addEventListener('message', handler);
+            });
+
         }
 
         setStatus(statusEl, 'Все файлы отправлены.');
