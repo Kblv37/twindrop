@@ -532,6 +532,11 @@ body.theme-premium {
   text-decoration: none;
 }
 
+.social-btn[href="mailto:twindrop.share@gmail.com"] {
+  width: 55px;
+  text-decoration: none;
+}
+
 .mailto {
   width: 55px;
   text-decoration: none;
