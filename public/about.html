@@ -6,6 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>О проекте | Twindrop</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+        /* Выравнивание текста по ширине */
+        .section p,
+        .section ul,
+        .section ol {
+            text-align: justify;
+            /* основное выравнивание */
+            text-justify: inter-word;
+            /* способ распределения пробелов */
+            hyphens: auto;
+            /* автоматические переносы слов */
+        }
+
+        /* Чтобы последняя строка абзаца тоже растягивалась (если нужно) */
+        .section p {
+            text-align-last: justify;
+        }
+
+        html {
+            /* для корректной работы hyphens в разных браузерах */
+            -webkit-hyphens: auto;
+            -moz-hyphens: auto;
+            hyphens: auto;
+        }
+    </style>
 </head>
 
 <body class="theme-premium">
