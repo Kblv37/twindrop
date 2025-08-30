@@ -208,7 +208,7 @@
                                 d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM0 8h5v16H0V8zm7.5 0H12v2.2h.06c.63-1.2 2.18-2.46 4.49-2.46 4.8 0 5.68 3.16 5.68 7.26V24h-5v-6.93c0-1.65-.03-3.77-2.3-3.77-2.3 0-2.65 1.79-2.65 3.64V24h-5V8z" />
                         </svg>
                     </a>
-                    <a class="social-btn ripple" href="mailto:twindrop.share@gmail.com" target="_blank" rel="noopener" aria-label="Написать на почту Twindrop" data-tooltip="Написать на почту Twindrop" for="mailto">
+                    <a class="social-btn ripple mailto" href="mailto:twindrop.share@gmail.com" target="_blank" rel="noopener" aria-label="Написать на почту Twindrop" data-tooltip="Написать на почту Twindrop">
                         <span>Email</span>
                     </a>
 
@@ -233,19 +233,6 @@
         }, { threshold: 0.12 });
 
         document.querySelectorAll('.fade-target').forEach(el => observer.observe(el));
-
-        // Риппл-эффект для .ripple
-        document.addEventListener('click', (e) => {
-            const btn = e.target.closest('.ripple');
-            if (!btn) return;
-            const rect = btn.getBoundingClientRect();
-            btn.style.setProperty('--ripple-x', (e.clientX - rect.left) + 'px');
-            btn.style.setProperty('--ripple-y', (e.clientY - rect.top) + 'px');
-            btn.classList.remove('is-rippling');
-            void btn.offsetWidth; // перезапуск анимации
-            btn.classList.add('is-rippling');
-            setTimeout(() => btn.classList.remove('is-rippling'), 500);
-        }, { passive: true });
     </script>
 </body>
 
