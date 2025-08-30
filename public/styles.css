@@ -529,7 +529,11 @@ body.theme-premium {
 
 .social-btn[for="about"] {
   width: 60px;
-  height: 36px;
+  text-decoration: none;
+}
+
+.social-btn[for="about"] {
+  width: 55px;
   text-decoration: none;
 }
 
