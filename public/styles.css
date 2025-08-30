@@ -527,6 +527,12 @@ body.theme-premium {
   transition: transform .08s ease, background-color .2s ease, border-color .2s ease;
 }
 
+.social-btn[for="about"] {
+  width: 60px;
+  height: 36px;
+  text-decoration: none;
+}
+
 .social-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
