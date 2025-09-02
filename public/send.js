@@ -178,20 +178,35 @@ const socket = io(SOCKET_URL);
 
             setStatus(statusEl, `Ожидание подтверждения доставки для: ${file.name}...`);
 
-            // ждём ack
-            await new Promise((resolve) => {
+            // ждём ack или error с таймаутом
+            await new Promise((resolve, reject) => {
+                const dc = peer.channel();
                 const handler = (event) => {
                     try {
                         const msg = JSON.parse(event.data);
                         if (msg.__meta === 'ack' && msg.name === file.name) {
+                            clearTimeout(timer);
+                            dc.removeEventListener('message', handler);
                             setStatus(statusEl, `Файл ${file.name} успешно доставлен ✅`);
-                            peer.channel().removeEventListener('message', handler);
                             resolve();
+                        } else if (msg.__meta === 'error' && msg.name === file.name) {
+                            clearTimeout(timer);
+                            dc.removeEventListener('message', handler);
+                            setStatus(statusEl, `Ошибка при передаче файла: ${msg.reason || 'неизвестная ошибка'}`);
+                            reject(new Error(`Ошибка передачи: ${msg.reason}`));
                         }
-                    } catch (e) { /* не JSON — игнор */ }
+                    } catch { /* не JSON */ }
                 };
-                peer.channel().addEventListener('message', handler);
+
+                const timer = setTimeout(() => {
+                    dc.removeEventListener('message', handler);
+                    setStatus(statusEl, `Подтверждение от получателя не получено (таймаут) ❌`);
+                    reject(new Error("ACK timeout"));
+                }, 20000); // 10 секунд
+
+                dc.addEventListener('message', handler);
             });
+
 
         }
 

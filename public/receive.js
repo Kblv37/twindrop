@@ -42,9 +42,10 @@ const socket = io(SOCKET_URL);
     let fileChunks = [];
     let expectedSize = 0;
     let fileName = 'file';
+    let total = 0;
 
     function saveIfComplete() {
-        const total = fileChunks.reduce((s, b) => s + b.byteLength, 0);
+        total = fileChunks.reduce((s, b) => s + b.byteLength, 0); // обновляем глобальную total
         setBar(recvBar, expectedSize ? total / expectedSize : 0);
         recvText.textContent = expectedSize
             ? `${(total / 1024 / 1024).toFixed(2)} / ${(expectedSize / 1024 / 1024).toFixed(2)} MB`
@@ -63,6 +64,7 @@ const socket = io(SOCKET_URL);
             expectedSize = 0;
         }
     }
+
 
     let peer;
 
@@ -95,13 +97,21 @@ const socket = io(SOCKET_URL);
                             return;
                         }
                         if (meta.__meta === 'file-complete') {
-                            // Отправляем ACK ровно один раз по завершении файла
-                            const dc = peer?.channel?.();
-                            if (dc && dc.readyState === 'open') {
-                                dc.send(JSON.stringify({ __meta: 'ack', name: fileName }));
+                            if (total !== expectedSize) {
+                                console.warn(`Файл ${fileName} получен не полностью: ${total} из ${expectedSize}`);
+                                const dc = peer?.channel?.();
+                                if (dc && dc.readyState === 'open') {
+                                    dc.send(JSON.stringify({ __meta: 'error', name: fileName, reason: 'incomplete' }));
+                                }
+                            } else {
+                                const dc = peer?.channel?.();
+                                if (dc && dc.readyState === 'open') {
+                                    dc.send(JSON.stringify({ __meta: 'ack', name: fileName }));
+                                }
                             }
                             return;
                         }
+
                     } catch {
                         // не-JSON — игнор
                     }
