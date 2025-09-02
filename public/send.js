@@ -255,7 +255,7 @@ const socket = io(SOCKET_URL);
 
     function waitForBufferLow(dc) {
         return new Promise((resolve) => {
-            const threshold = 20480 * 1024; // вместо 1 МБ
+            const threshold = 1024 * 1024; // вместо 1 МБ
             if (dc.bufferedAmount < threshold) return resolve();
             const check = () => {
                 if (dc.bufferedAmount < threshold) {
