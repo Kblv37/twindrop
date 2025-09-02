@@ -1,4 +1,4 @@
-// receive.js — фронт для получателя
+// receive.js — фронт для получателя (упрощённая версия)
 const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
@@ -11,19 +11,16 @@ const socket = io(SOCKET_URL);
     const downloads = $('#downloads');
     const qrContainer = $('#qr');
 
-    const disconnectBtn = $('#disconnectBtn');
-    disconnectBtn.style.display = 'none'; // скрыта изначально
-
     // Получаем код комнаты от сервера
     const r = await fetch(`${SOCKET_URL}/api/new-room`);
     const { code } = await r.json();
     codeEl.textContent = code;
 
-    // Формируем URL на основе кода
+    // Формируем URL для отправителя
     const url = `https://twindrop.netlify.app/send.html?room=${code}`;
 
-    // Генерация QR на клиенте (чисто JS, без сервера)
-    qrContainer.innerHTML = ""; // очищаем, чтобы не плодились
+    // Генерация QR
+    qrContainer.innerHTML = "";
     new QRCode(qrContainer, {
         text: url,
         width: 200,
@@ -42,19 +39,9 @@ const socket = io(SOCKET_URL);
     let fileChunks = [];
     let expectedSize = 0;
     let fileName = 'file';
-    let total = 0;
-
-    function base64ToArrayBuffer(base64) {
-        const binary = atob(base64);
-        const len = binary.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-        return bytes.buffer;
-    }
-
 
     function saveIfComplete() {
-        total = fileChunks.reduce((s, b) => s + b.byteLength, 0); // обновляем глобальную total
+        const total = fileChunks.reduce((s, b) => s + b.byteLength, 0);
         setBar(recvBar, expectedSize ? total / expectedSize : 0);
         recvText.textContent = expectedSize
             ? `${(total / 1024 / 1024).toFixed(2)} / ${(expectedSize / 1024 / 1024).toFixed(2)} MB`
@@ -68,23 +55,22 @@ const socket = io(SOCKET_URL);
             a.textContent = `Скачать: ${fileName} (${(expectedSize / 1024 / 1024).toFixed(2)} MB)`;
             a.className = 'btn';
             downloads.appendChild(a);
+
             setStatus(statusEl, 'Передача завершена.');
             fileChunks = [];
             expectedSize = 0;
         }
     }
 
-
     let peer;
 
     socket.on('peer-joined', () => {
         setStatus(statusEl, 'Отправитель подключился. Устанавливаем P2P…');
 
-        function handleIncomingData(data, via = 'dc') {
+        function handleIncomingData(data) {
             if (typeof data === 'string') {
                 try {
                     const meta = JSON.parse(data);
-
                     if (meta.__meta === 'file') {
                         fileName = meta.name || 'file';
                         expectedSize = meta.size || 0;
@@ -92,33 +78,12 @@ const socket = io(SOCKET_URL);
                         setBar(recvBar, 0);
                         return;
                     }
-
                     if (meta.__meta === 'file-complete') {
-                        const dc = peer?.channel?.();
-                        const isOpen = dc && dc.readyState === 'open';
-
-                        if (total !== expectedSize) {
-                            console.warn(`Файл ${fileName} получен не полностью: ${total} из ${expectedSize}`);
-                            const payload = { __meta: 'error', name: fileName, reason: 'incomplete' };
-
-                            if (isOpen) {
-                                dc.send(JSON.stringify(payload));
-                            } else {
-                                socket.emit('relay-meta', { code, metaPayload: payload });
-                            }
-                        } else {
-                            const payload = { __meta: 'ack', name: fileName };
-
-                            if (isOpen) {
-                                dc.send(JSON.stringify(payload));
-                            } else {
-                                socket.emit('relay-meta', { code, metaPayload: payload });
-                            }
-                        }
+                        saveIfComplete();
                         return;
                     }
                 } catch {
-                    // не-JSON — игнорируем
+                    // ignore non-JSON
                 }
             }
 
@@ -135,33 +100,15 @@ const socket = io(SOCKET_URL);
                 { urls: 'stun:stun1.l.google.com:19302' }
             ],
             onSignal: (data) => socket.emit('signal', { code, data }),
-
-            onConnect: () => {
-                setStatus(statusEl, 'P2P соединение установлено. Ожидаем файл…');
-                disconnectBtn.style.display = 'inline-block';
-            },
-
+            onConnect: () => setStatus(statusEl, 'P2P соединение установлено. Ожидаем файл…'),
             onData: handleIncomingData,
-
             onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
             onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
         });
     });
 
-
     socket.on('signal', (data) => {
         if (peer) peer.handleSignal(data);
-    });
-
-    socket.on('relay-chunk', (payload) => {
-        // payload: { code, b64 }
-        const buffer = base64ToArrayBuffer(payload.b64);
-        handleIncomingData(buffer, 'relay');
-    });
-
-    socket.on('relay-meta', (payload) => {
-        const meta = payload.metaPayload || payload;
-        handleIncomingData(JSON.stringify(meta), 'relay');
     });
 
     socket.on('room-size', ({ size }) => {
@@ -170,11 +117,7 @@ const socket = io(SOCKET_URL);
 
     socket.on('peer-left', () => {
         setStatus(statusEl, 'Отправитель отключился. Соединение разорвано.');
-
-        // закрываем peer и сбрасываем
         resetPeer();
-
-        // Можно очистить прогрессбар/загрузки, чтобы не путать юзера
         recvBar.value = 0;
         recvText.textContent = '';
     });
@@ -185,14 +128,4 @@ const socket = io(SOCKET_URL);
             peer = null;
         }
     }
-
-    disconnectBtn.onclick = () => {
-        resetPeer();
-        socket.emit('leave-room', { code });
-        setStatus(statusEl, 'Соединение завершено пользователем.');
-        disconnectBtn.style.display = 'none';
-        recvBar.value = 0;
-        recvText.textContent = '';
-    };
-
 })();

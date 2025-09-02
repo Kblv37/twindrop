@@ -75,12 +75,17 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
     }
 
     function send(data) {
-        if (isOpen()) {
+        if (!isOpen()) return false;
+
+        try {
             channel.send(data);
             return true;
+        } catch (e) {
+            console.error("Ошибка при отправке:", e);
+            return false;
         }
-        return false;
     }
+
 
     function destroy() {
         try { channel?.close(); } catch { }
