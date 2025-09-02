@@ -15,7 +15,7 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
     const pc = new RTCPeerConnection({
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }, // валидный второй STUN
+            { urls: 'stun:stun1.l.google.com:19302' }, // второй STUN
         ]
     });
 
@@ -24,7 +24,10 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
         channel = pc.createDataChannel('file');
         hookupChannel();
     } else {
-        pc.ondatachannel = (ev) => { channel = ev.channel; hookupChannel(); };
+        pc.ondatachannel = (ev) => {
+            channel = ev.channel;
+            hookupChannel();
+        };
     }
 
     function hookupChannel() {
@@ -40,33 +43,43 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
     };
 
     pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+        if (["disconnected", "failed", "closed"].includes(pc.connectionState)) {
             onClose && onClose();
         }
     };
 
     async function startNegotiation() {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        onSignal(offer);
+        try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            onSignal(offer);
+        } catch (e) {
+            console.error("Ошибка при создании оффера:", e);
+        }
     }
 
     async function handleSignal(data) {
-        if (data.candidate) {
-            try { await pc.addIceCandidate(data.candidate); } catch { }
-            return;
-        }
-        if (data.type === 'offer') {
-            await pc.setRemoteDescription(new RTCSessionDescription(data));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            onSignal(answer);
-        } else if (data.type === 'answer') {
-            await pc.setRemoteDescription(new RTCSessionDescription(data));
+        try {
+            if (data.candidate) {
+                await pc.addIceCandidate(data.candidate);
+                return;
+            }
+            if (data.type === 'offer') {
+                if (!pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    onSignal(answer);
+                }
+            } else if (data.type === 'answer') {
+                if (!pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data));
+                }
+            }
+        } catch (e) {
+            console.error("Ошибка в handleSignal:", e);
         }
     }
-
-    if (initiator) startNegotiation();
 
     if (initiator) startNegotiation();
 
@@ -76,7 +89,6 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
 
     function send(data) {
         if (!isOpen()) return false;
-
         try {
             channel.send(data);
             return true;
@@ -85,7 +97,6 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
             return false;
         }
     }
-
 
     function destroy() {
         try { channel?.close(); } catch { }
@@ -100,7 +111,6 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
         send,
         destroy
     };
-
 }
 
 function parseQuery() {
