@@ -89,6 +89,26 @@ io.on('connection', (socket) => {
         socket.to(code).emit('signal', data);
     });
 
+    // Relay: пересылаем чанк файла другому участнику
+    socket.on('relay-chunk', (payload) => {
+        const { code } = payload;
+        if (!code) return;
+        socket.to(code).emit('relay-chunk', payload);
+    });
+
+    // Relay: пересылаем метаданные (например имя файла, размер и т.д.)
+    socket.on('relay-meta', (payload) => {
+        const { code } = payload;
+        if (!code) return;
+        socket.to(code).emit('relay-meta', payload);
+    });
+
+    // Relay: пинг/понг (чтобы проверять связь)
+    socket.on('relay-ping', ({ code }) => {
+        if (!code) return;
+        socket.to(code).emit('relay-pong', { from: socket.id });
+    });
+
     socket.on('disconnect', () => {
         const code = socket.data.code;
         if (!code) return;

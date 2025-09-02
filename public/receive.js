@@ -44,6 +44,15 @@ const socket = io(SOCKET_URL);
     let fileName = 'file';
     let total = 0;
 
+    function base64ToArrayBuffer(base64) {
+        const binary = atob(base64);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+    }
+
+
     function saveIfComplete() {
         total = fileChunks.reduce((s, b) => s + b.byteLength, 0); // обновляем глобальную total
         setBar(recvBar, expectedSize ? total / expectedSize : 0);
@@ -71,6 +80,54 @@ const socket = io(SOCKET_URL);
     socket.on('peer-joined', () => {
         setStatus(statusEl, 'Отправитель подключился. Устанавливаем P2P…');
 
+        function handleIncomingData(data, via = 'dc') {
+            if (typeof data === 'string') {
+                try {
+                    const meta = JSON.parse(data);
+
+                    if (meta.__meta === 'file') {
+                        fileName = meta.name || 'file';
+                        expectedSize = meta.size || 0;
+                        recvText.textContent = `Получение: ${fileName}`;
+                        setBar(recvBar, 0);
+                        return;
+                    }
+
+                    if (meta.__meta === 'file-complete') {
+                        const dc = peer?.channel?.();
+                        const isOpen = dc && dc.readyState === 'open';
+
+                        if (total !== expectedSize) {
+                            console.warn(`Файл ${fileName} получен не полностью: ${total} из ${expectedSize}`);
+                            const payload = { __meta: 'error', name: fileName, reason: 'incomplete' };
+
+                            if (isOpen) {
+                                dc.send(JSON.stringify(payload));
+                            } else {
+                                socket.emit('relay-meta', { code, metaPayload: payload });
+                            }
+                        } else {
+                            const payload = { __meta: 'ack', name: fileName };
+
+                            if (isOpen) {
+                                dc.send(JSON.stringify(payload));
+                            } else {
+                                socket.emit('relay-meta', { code, metaPayload: payload });
+                            }
+                        }
+                        return;
+                    }
+                } catch {
+                    // не-JSON — игнорируем
+                }
+            }
+
+            if (data instanceof ArrayBuffer) {
+                fileChunks.push(data);
+                saveIfComplete();
+            }
+        }
+
         peer = createPeer({
             initiator: false,
             iceServers: [
@@ -84,52 +141,27 @@ const socket = io(SOCKET_URL);
                 disconnectBtn.style.display = 'inline-block';
             },
 
-            // receive.js — фрагмент внутри onData:
-            onData: (data) => {
-                if (typeof data === 'string') {
-                    try {
-                        const meta = JSON.parse(data);
-                        if (meta.__meta === 'file') {
-                            fileName = meta.name || 'file';
-                            expectedSize = meta.size || 0;
-                            recvText.textContent = `Получение: ${fileName}`;
-                            setBar(recvBar, 0);
-                            return;
-                        }
-                        if (meta.__meta === 'file-complete') {
-                            if (total !== expectedSize) {
-                                console.warn(`Файл ${fileName} получен не полностью: ${total} из ${expectedSize}`);
-                                const dc = peer?.channel?.();
-                                if (dc && dc.readyState === 'open') {
-                                    dc.send(JSON.stringify({ __meta: 'error', name: fileName, reason: 'incomplete' }));
-                                }
-                            } else {
-                                const dc = peer?.channel?.();
-                                if (dc && dc.readyState === 'open') {
-                                    dc.send(JSON.stringify({ __meta: 'ack', name: fileName }));
-                                }
-                            }
-                            return;
-                        }
-
-                    } catch {
-                        // не-JSON — игнор
-                    }
-                }
-
-                if (data instanceof ArrayBuffer) {
-                    fileChunks.push(data);
-                    saveIfComplete();
-                }
-            },
+            onData: handleIncomingData,
 
             onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
             onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
         });
     });
 
+
     socket.on('signal', (data) => {
         if (peer) peer.handleSignal(data);
+    });
+
+    socket.on('relay-chunk', (payload) => {
+        // payload: { code, b64 }
+        const buffer = base64ToArrayBuffer(payload.b64);
+        handleIncomingData(buffer, 'relay');
+    });
+
+    socket.on('relay-meta', (payload) => {
+        const meta = payload.metaPayload || payload;
+        handleIncomingData(JSON.stringify(meta), 'relay');
     });
 
     socket.on('room-size', ({ size }) => {

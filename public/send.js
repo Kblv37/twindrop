@@ -13,6 +13,7 @@ const socket = io(SOCKET_URL);
     const sendText = $('#sendText');
     const statusEl = $('#status');
     const qrContainer = $('#qrContainer'); // элемент для QR-кода
+    const ACK_TIMEOUT_MS = 20000; // можно менять
 
     const disconnectBtn = $('#disconnectBtn');
     disconnectBtn.style.display = 'none'; // по умолчанию скрыта
@@ -113,7 +114,11 @@ const socket = io(SOCKET_URL);
                     disconnectBtn.style.display = 'inline-block'; // показываем кнопку
                 },
                 onData: () => { },
-                onClose: () => setStatus(statusEl, 'Соединение закрыто.'),
+                onClose: () => {
+                    setStatus(statusEl, 'P2P канал закрыт. Переключаемся на серверный релей.');
+                    // не уничтожаем peer сразу — чтобы можно было попытаться восстановить позже
+                },
+
                 onError: (e) => setStatus(statusEl, 'Ошибка соединения: ' + e?.message)
             });
             sendUI.style.display = 'block';
@@ -121,6 +126,23 @@ const socket = io(SOCKET_URL);
     });
 
     socket.on('signal', (data) => { if (peer) peer.handleSignal(data); });
+
+    // если DataChannel недоступен — получаем ack/error через relay
+    socket.on('relay-meta', (payload) => {
+        // payload.metaPayload — то, что отправили из sendChunkOrRelay (не base64)
+        const meta = payload.metaPayload;
+        try {
+            if (meta.__meta === 'ack' || meta.__meta === 'error') {
+                // эмулируем событие как будто пришло через DC: вызываем тот же обработчик
+                // можно прокинуть в текущую логику ожидания ack (там слушаем dc.message)
+                // проще — напишем глобально — сохраним в socketLastMessage для промиса
+                socket._lastRelayMeta = meta;
+                // Также эмитим локально, если нужно
+                socket.emit('local-relay-meta', meta);
+            }
+        } catch { }
+    });
+
     socket.on('room-full', () => setStatus(statusEl, 'Комната уже занята двумя участниками.'));
 
     socket.on('peer-left', () => {
@@ -152,7 +174,8 @@ const socket = io(SOCKET_URL);
 
         for (const file of files) {
             // метаданные о файле
-            peer.channel().send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
+            const dc = peer?.channel();
+            sendChunkOrRelay(dc, { __meta: 'file', name: file.name, size: file.size }, { kind: 'meta' });
 
             const reader = file.stream().getReader();
             let sent = 0;
@@ -166,7 +189,7 @@ const socket = io(SOCKET_URL);
                 await waitForBufferLow(peer.channel());
 
                 const chunk = value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
-                peer.channel().send(chunk);
+                sendChunkOrRelay(dc, chunk, { kind: 'chunk', seq: sent }); // seq по желанию
 
                 sent += value.byteLength;
                 setBar(sendBar, sent / file.size);
@@ -174,38 +197,55 @@ const socket = io(SOCKET_URL);
             }
 
             // после всех чанков отправляем "файл закончен"
-            peer.channel().send(JSON.stringify({ __meta: 'file-complete', name: file.name, size: file.size }));
+            sendChunkOrRelay(dc, { __meta: 'file-complete', name: file.name, size: file.size }, { kind: 'meta' });
 
             setStatus(statusEl, `Ожидание подтверждения доставки для: ${file.name}...`);
 
             // ждём ack или error с таймаутом
             await new Promise((resolve, reject) => {
-                const dc = peer.channel();
-                const handler = (event) => {
+                const dc = peer?.channel();
+                const onMessageFromDC = (event) => {
                     try {
-                        const msg = JSON.parse(event.data);
-                        if (msg.__meta === 'ack' && msg.name === file.name) {
-                            clearTimeout(timer);
-                            dc.removeEventListener('message', handler);
-                            setStatus(statusEl, `Файл ${file.name} успешно доставлен ✅`);
-                            resolve();
-                        } else if (msg.__meta === 'error' && msg.name === file.name) {
-                            clearTimeout(timer);
-                            dc.removeEventListener('message', handler);
-                            setStatus(statusEl, `Ошибка при передаче файла: ${msg.reason || 'неизвестная ошибка'}`);
-                            reject(new Error(`Ошибка передачи: ${msg.reason}`));
+                        const msg = typeof event.data === 'string' ? JSON.parse(event.data) : null;
+                        if (msg && msg.__meta === 'ack' && msg.name === file.name) {
+                            cleanupAndResolve();
+                        } else if (msg && msg.__meta === 'error' && msg.name === file.name) {
+                            cleanupAndReject(new Error(msg.reason));
                         }
-                    } catch { /* не JSON */ }
+                    } catch { }
+                };
+
+                const onRelayMeta = (meta) => {
+                    try {
+                        if (meta.__meta === 'ack' && meta.name === file.name) {
+                            cleanupAndResolve();
+                        } else if (meta.__meta === 'error' && meta.name === file.name) {
+                            cleanupAndReject(new Error(meta.reason));
+                        }
+                    } catch { }
                 };
 
                 const timer = setTimeout(() => {
-                    dc.removeEventListener('message', handler);
+                    cleanup();
                     setStatus(statusEl, `Подтверждение от получателя не получено (таймаут) ❌`);
-                    reject(new Error("ACK timeout"));
-                }, 20000); // 10 секунд
+                    reject(new Error('ACK timeout'));
+                }, ACK_TIMEOUT_MS);
 
-                dc.addEventListener('message', handler);
+                function cleanup() {
+                    clearTimeout(timer);
+                    if (dc) dc.removeEventListener('message', onMessageFromDC);
+                    socket.off('local-relay-meta', onRelayMeta);
+                }
+                function cleanupAndResolve() { cleanup(); setStatus(statusEl, `Файл ${file.name} успешно доставлен ✅`); resolve(); }
+                function cleanupAndReject(err) { cleanup(); setStatus(statusEl, `Ошибка при передаче файла: ${err.message || err}`); reject(err); }
+
+                if (dc) dc.addEventListener('message', onMessageFromDC);
+                socket.on('local-relay-meta', onRelayMeta);
+
+                // если до этого через relay уже пришёл meta — проверим сразу
+                if (socket._lastRelayMeta) onRelayMeta(socket._lastRelayMeta);
             });
+
 
 
         }
@@ -228,6 +268,46 @@ const socket = io(SOCKET_URL);
             setTimeout(check, 50);
         });
     }
+
+    // отправляет пачку — выбирает dc если доступен, иначе релей через сервер
+    function sendChunkOrRelay(dc, payload, meta = {}) {
+        try {
+            // если есть DC и он открыт — используем его
+            if (dc && dc.readyState === 'open') {
+                if (payload instanceof ArrayBuffer) {
+                    dc.send(payload);
+                    return 'dc';
+                } else {
+                    dc.send(JSON.stringify(payload));
+                    return 'dc';
+                }
+            } else {
+                // релей через сервер: payload может быть ArrayBuffer -> нужно паковать в Base64
+                if (payload instanceof ArrayBuffer) {
+                    const b64 = arrayBufferToBase64(payload);
+                    socket.emit('relay-chunk', { code, b64, meta });
+                } else {
+                    socket.emit('relay-meta', { code, metaPayload: payload });
+                }
+                return 'relay';
+            }
+        } catch (e) {
+            console.error('sendChunkOrRelay error', e);
+            return 'error';
+        }
+    }
+
+    // утилита
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        return btoa(binary);
+    }
+
 
     function resetPeer() {
         if (peer) {
