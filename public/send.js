@@ -200,7 +200,13 @@ const socket = io(SOCKET_URL);
             }
         } catch (e) {
             console.error('Send error:', e);
-            setStatus(statusEl, `Не удалось отправить файл. Браузер получателя не выдержал выбранный размер чанка: ${(CHUNK_SIZE / 1024).toFixed(0)} KB. Попробуйте выбрать меньшую скорость и отправить файл ещё раз. Или обратитесь в поддержку: <a href="https://t.me/h4tenigg4s" target="_blank">@h4tenigg4s</a>`);
+            setStatus(
+                statusEl,
+                `Не удалось отправить файл. Браузер получателя не выдержал выбранный размер чанка: ${(CHUNK_SIZE / 1024).toFixed(0)} KB. 
+                Попробуйте выбрать меньшую скорость и отправить файл ещё раз. Или обратитесь в поддержку:`,
+                { href: "https://t.me/h4tenigg4s", text: "@h4tenigg4s" }
+            );
+
         }
     };
 

@@ -1,10 +1,25 @@
 // shared.js — debug версия (копии замените на этот файл временно)
 function $(sel) { return document.querySelector(sel); }
 
-function setStatus(el, text) {
+function setStatus(el, text, link) {
     el.style.display = text ? 'block' : 'none';
-    el.textContent = text || '';
+    el.innerHTML = ''; // очистить
+
+    if (text) {
+        const span = document.createElement('span');
+        span.textContent = text + ' ';
+        el.appendChild(span);
+    }
+
+    if (link) {
+        const a = document.createElement('a');
+        a.href = link.href;
+        a.target = '_blank';
+        a.textContent = link.text;
+        el.appendChild(a);
+    }
 }
+
 
 function setBar(bar, ratio) {
     bar.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
