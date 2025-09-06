@@ -1,4 +1,4 @@
-// server.js
+// server.js - серверная сторона проекта, которая стоит в рендер.ком
 const path = require('path');
 const express = require('express');
 const http = require('http');
