@@ -143,22 +143,12 @@ const socket = io(SOCKET_URL);
         // Порог, при превышении которого ждём освобождения буфера
         dc.bufferedAmountLowThreshold = 1 * 1024 * 1024; // 1 MB
 
-        // 🔹 варианты размеров чанка
-        const CHUNK_SIZES = {
-            safari: 16 * 1024,   // Safari любит маленькие куски
-            normal: 64 * 1024,   // стандарт
-            fast: 128 * 1024,    // быстрее
-            turbo: 256 * 1024    // максималка
-        };
+        // берём выбор пользователя из селектора
+        const speedSelect = document.getElementById('speedSelect');
+        let CHUNK_SIZE = parseInt(speedSelect.value, 10) * 1024;
 
-        // авто-выбор для браузера
-        let CHUNK_SIZE = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')
-            ? CHUNK_SIZES.fast
-            : CHUNK_SIZES.turbo;
+        console.log(`[send] выбран размер чанка: ${CHUNK_SIZE / 1024} KB`);
 
-        // 👉 если хочешь протестить скорость вручную:
-        // CHUNK_SIZE = CHUNK_SIZES.fast;
-        // CHUNK_SIZE = CHUNK_SIZES.turbo;
 
         console.log(`[send] выбран размер чанка: ${CHUNK_SIZE / 1024} KB`);
 
