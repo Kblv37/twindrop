@@ -210,8 +210,6 @@ const socket = io(SOCKET_URL);
         }
     };
 
-
-
     function resetPeer() {
         if (peer) {
             try { peer.destroy(); } catch { }

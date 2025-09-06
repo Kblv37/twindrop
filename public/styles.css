@@ -722,15 +722,12 @@ body.theme-premium {
   margin-bottom: 4px;
 }
 
-
-
-
 .select-wrapper {
   position: relative;
   max-width: 320px;
   margin: 20px 0;
   font-family: var(--font-sans);
-  z-index: 1000; /* сам контейнер выше соседей */
+  z-index: 1000;
 }
 
 .select-display {
@@ -742,7 +739,26 @@ body.theme-premium {
   cursor: pointer;
   box-shadow: var(--shadow);
   backdrop-filter: blur(8px);
-  transition: border-color .25s ease, box-shadow .25s ease, background-color .25s ease, transform .15s ease;
+  transition: border-color .25s ease, box-shadow .25s ease,
+              background-color .25s ease, transform .15s ease;
+  position: relative;
+  user-select: none;
+}
+
+.select-display::after {
+  content: "▾";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: transform .25s ease;
+}
+
+.select-display.open::after {
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .select-display:hover {
@@ -753,19 +769,21 @@ body.theme-premium {
 
 .select-options {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
-  right: 0;
-  background: var(--navy-1); /* плотный фон, без прозрачности */
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  box-shadow: 0 14px 40px rgba(0,0,0,0.45);
+  width: 100%;
   list-style: none;
   margin: 0;
   padding: 6px 0;
-  display: none;
-  z-index: 9999;
-  animation: dropdownFade .18s ease-out;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+  display: none; /* управляется скриптом */
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 2000;
 }
 
 @keyframes dropdownFade {
