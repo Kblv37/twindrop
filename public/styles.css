@@ -722,82 +722,60 @@ body.theme-premium {
   margin-bottom: 4px;
 }
 
-/* Обёртка для премиального вида */
-label[for="speedSelect"],
-#speedSelect {
-  display: block;
-}
-
-label[for="speedSelect"] {
-  font-weight: 600;
+.select-wrapper {
+  position: relative;
+  max-width: 320px;
+  font-family: var(--font-sans);
   font-size: 14px;
-  margin-bottom: 8px;
-  color: var(--text-muted);
-  letter-spacing: 0.3px;
+  margin: 18px 0;
 }
 
-/* Премиум-стиль селекта */
-#speedSelect {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
+.select-display {
   background-color: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
   padding: 12px 16px;
-  font-family: var(--font-sans);
-  font-size: 14px;
   color: var(--text);
-  width: 100%;
-  max-width: 320px;
   cursor: pointer;
-  margin: 18px 0; /* Отступы сверху и снизу */
   box-shadow: var(--shadow);
   transition: border-color .25s ease, box-shadow .25s ease, background-color .25s ease, transform .15s ease;
-  background-image:
-    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0)),
-    url("data:image/svg+xml;utf8,<svg fill='%23cdd3d9' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-size: 16px 16px;
 }
 
-/* Ховер и фокус */
-#speedSelect:hover {
+.select-display:hover {
   background-color: rgba(255,255,255,0.08);
   border-color: var(--accent-2);
-  transform: translateY(-1px);
 }
 
-#speedSelect:focus {
-  outline: none;
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.4);
+.select-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--navy-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  margin-top: 6px;
+  list-style: none;
+  padding: 6px 0;
+  display: none;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
 }
 
-/* Опции */
-#speedSelect option {
-  background-color: var(--navy-1); /* фон как везде */
+.select-options li {
+  padding: 10px 16px;
+  cursor: pointer;
   color: var(--text);
-  font-family: var(--font-sans);
-  padding: 10px 14px;
+  transition: background .2s;
 }
 
-#speedSelect optgroup {
-  background-color: var(--navy-1);
-  color: var(--text-muted);
+.select-options li:hover {
+  background: rgba(110,168,254,0.15);
 }
 
-#speedSelect option:hover,
-#speedSelect option:focus {
-  background-color: var(--accent-2);
-  color: #fff;
-}
-
-
-/* Мобильная адаптация */
-@media (max-width: 480px) {
-  #speedSelect {
-    max-width: 100%;
-  }
+.select-options li.active {
+  background: var(--accent-1);
+  color: white;
 }

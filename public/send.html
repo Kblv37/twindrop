@@ -43,13 +43,24 @@
         </div>
 
         <label for="speedSelect">Скорость передачи:</label>
-        <select id="speedSelect">
-          <option value="16">Очень надёжно (16 KB — для Safari)</option>
-          <option value="64" selected>Стандарт (64 KB)</option>
-          <option value="128">Быстро (128 KB)</option>
-          <option value="256">Турбо (256 KB)</option>
-          <option value="512">Эксперимент (512 KB)</option>
-        </select>
+        <div class="select-wrapper">
+          <div class="select-display">Стандарт (64 KB)</div>
+          <ul class="select-options">
+            <li data-value="16">Очень надёжно (16 KB — для Safari)</li>
+            <li data-value="64" class="active">Стандарт (64 KB)</li>
+            <li data-value="128">Быстро (128 KB)</li>
+            <li data-value="256">Турбо (256 KB)</li>
+            <li data-value="512">Эксперимент (512 KB)</li>
+          </ul>
+          <select id="speedSelect" hidden>
+            <option value="16">Очень надёжно (16 KB — для Safari)</option>
+            <option value="64" selected>Стандарт (64 KB)</option>
+            <option value="128">Быстро (128 KB)</option>
+            <option value="256">Турбо (256 KB)</option>
+            <option value="512">Эксперимент (512 KB)</option>
+          </select>
+        </div>
+
 
         <div class="small muted" style="margin-top:8px">Или откройте эту страницу по QR — код подставится сам.</div>
       </section>
@@ -160,6 +171,42 @@
       });
       fileInput.addEventListener('change', () => { if (fileInput.files?.[0]) setFile(fileInput.files[0]); });
     }
+
+
+    const display = document.querySelector('.select-display');
+    const options = document.querySelector('.select-options');
+    const hiddenSelect = document.getElementById('speedSelect');
+
+    display.addEventListener('click', () => {
+      options.style.display = options.style.display === 'block' ? 'none' : 'block';
+    });
+
+    options.querySelectorAll('li').forEach(li => {
+      li.addEventListener('click', () => {
+        // обновить отображение
+        display.textContent = li.textContent;
+
+        // выделить выбранное
+        options.querySelectorAll('li').forEach(o => o.classList.remove('active'));
+        li.classList.add('active');
+
+        // обновить скрытый select
+        hiddenSelect.value = li.dataset.value;
+
+        // закрыть список
+        options.style.display = 'none';
+
+        console.log(`Выбрана скорость: ${hiddenSelect.value} KB`);
+      });
+    });
+
+    // закрыть список при клике вне
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.select-wrapper')) {
+        options.style.display = 'none';
+      }
+    });
+
   </script>
 </body>
 
