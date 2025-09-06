@@ -124,6 +124,10 @@ body.theme-premium {
   flex-wrap: wrap;
 }
 
+.header-inner h1 {
+  margin: 0;
+}
+
 .hairline {
   height: 1px;
   background: var(--hairline);
