@@ -129,26 +129,36 @@ const socket = io(SOCKET_URL);
     });
 
     // ВЕРСИЯ С ЧАНКАМИ И BACKPRESSURE
+    // ВЕРСИЯ С ЧАНКАМИ И BACKPRESSURE
     sendBtn.onclick = async () => {
-        if (!peer || !peer.channel() || peer.channel().readyState !== 'open') {
+        if (!peer || !peer.channel()) {
             setStatus(statusEl, 'Канал ещё не готов.');
             return;
+        }
+
+        const dc = peer.channel();
+
+        // 🔹 Ждём пока канал реально откроется
+        if (dc.readyState !== 'open') {
+            setStatus(statusEl, 'Ждём открытия канала…');
+            await new Promise((resolve, reject) => {
+                const timer = setTimeout(() => reject(new Error("Канал не открылся")), 8000);
+                dc.addEventListener('open', () => {
+                    clearTimeout(timer);
+                    resolve();
+                }, { once: true });
+            });
         }
 
         const files = fileInput.files;
         if (!files || files.length === 0) return;
 
-        const dc = peer.channel();
+        // Порог для backpressure
+        dc.bufferedAmountLowThreshold = 1 * 1024 * 1024;
 
-        // Порог, при превышении которого ждём освобождения буфера
-        dc.bufferedAmountLowThreshold = 1 * 1024 * 1024; // 1 MB
-
-        // берём выбор пользователя из селектора
+        // размер чанка — из селектора
         const speedSelect = document.getElementById('speedSelect');
         let CHUNK_SIZE = parseInt(speedSelect.value, 10) * 1024;
-
-        console.log(`[send] выбран размер чанка: ${CHUNK_SIZE / 1024} KB`);
-
 
         console.log(`[send] выбран размер чанка: ${CHUNK_SIZE / 1024} KB`);
 
@@ -163,7 +173,6 @@ const socket = io(SOCKET_URL);
 
         try {
             for (const file of files) {
-                // метаданные
                 dc.send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
                 setStatus(statusEl, `Отправка: ${file.name}`);
                 let sent = 0;
@@ -194,6 +203,7 @@ const socket = io(SOCKET_URL);
             setStatus(statusEl, 'Ошибка при отправке: ' + (e?.message || e));
         }
     };
+
 
 
     function resetPeer() {
