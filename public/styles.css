@@ -393,6 +393,7 @@ body.theme-premium {
   padding: clamp(16px, 6vw, 28px);
   transition: background-color .25s ease, border-color .25s ease, transform .12s ease;
   min-height: 120px;
+  z-index: 1; /* ниже, чем 1000 */
 }
 
 .dropzone:hover {
