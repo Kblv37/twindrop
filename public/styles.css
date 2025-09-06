@@ -722,33 +722,63 @@ body.theme-premium {
   margin-bottom: 4px;
 }
 
-#speedSelect {
-  appearance: none; /* убираем системный вид */
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--hairline);
-  color: var(--text);
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  font-size: 15px;
-  transition: all .25s ease;
-  width: 100%;
-  max-width: 220px;
 
-  /* иконка стрелки */
-  background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='14' viewBox='0 0 24 24' width='14' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 14px;
+/* Метка для селекта */
+label[for="speedSelect"] {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
 }
 
+/* Премиум-стиль селекта */
+#speedSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text);
+  width: 100%;
+  max-width: 280px;
+  cursor: pointer;
+  transition: border-color .25s ease, box-shadow .25s ease, background-color .25s ease;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
+    url("data:image/svg+xml;utf8,<svg fill='%23cdd3d9' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+}
+
+/* Ховер и фокус */
 #speedSelect:hover {
-  border-color: var(--accent-1);
-  background: rgba(110, 168, 254, 0.08);
-  box-shadow: 0 0 10px rgba(110, 168, 254, 0.3);
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-2);
 }
 
 #speedSelect:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(110, 168, 254, 0.6);
+  border-color: var(--accent-2);
+  box-shadow: var(--focus-ring);
+}
+
+/* Опции в выпадающем списке */
+#speedSelect option {
+  background: var(--navy-1);
+  color: var(--text);
+  padding: 8px;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 480px) {
+  #speedSelect {
+    max-width: 100%;
+  }
 }
