@@ -393,7 +393,8 @@ body.theme-premium {
   padding: clamp(16px, 6vw, 28px);
   transition: background-color .25s ease, border-color .25s ease, transform .12s ease;
   min-height: 120px;
-  z-index: 1; /* ниже, чем 1000 */
+  z-index: 0;
+  transform: none;
 }
 
 .dropzone:hover {
@@ -403,7 +404,6 @@ body.theme-premium {
 .dropzone.drag-over {
   border-color: var(--accent-2);
   background: rgba(110, 168, 254, 0.10);
-  transform: translateY(-1px);
 }
 
 .dropzone input[type="file"] {
@@ -728,7 +728,7 @@ body.theme-premium {
   max-width: 320px;
   margin: 20px 0;
   font-family: var(--font-sans);
-  z-index: 1000; /* сам контейнер выше соседей */
+  z-index: 1000; 
 }
 
 .select-display {
