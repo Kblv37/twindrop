@@ -40,26 +40,45 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
     function hookupChannel() {
         try {
             channel.binaryType = 'arraybuffer';
+
             channel.onopen = () => {
-                console.log('[shared] datachannel.onopen (state=', channel.readyState, ')');
+                // безопасный порог для backpressure (64 KB)
+                try { channel.bufferedAmountLowThreshold = 64 * 1024; } catch { }
+
+                // обработчик, чтобы продолжать отправку, когда буфер освобождается
+                channel.onbufferedamountlow = () => {
+                    console.log('[shared] bufferedamountlow, можно слать дальше');
+                    if (window._pendingChunks && window._pendingChunks.length > 0) {
+                        const next = window._pendingChunks.shift();
+                        channel.send(next);
+                        console.log('[shared] отправлен отложенный чанк', next.byteLength || next.length);
+                    }
+                };
+
                 onConnect && onConnect();
             };
+
             channel.onmessage = (ev) => {
-                console.log('[shared] datachannel.onmessage (len=', ev.data && ev.data.byteLength ? ev.data.byteLength : (typeof ev.data), ')', ev.data);
+                console.log('[shared] datachannel.onmessage (len=',
+                    ev.data && ev.data.byteLength ? ev.data.byteLength : (typeof ev.data), ')', ev.data);
                 onData && onData(ev.data);
             };
+
             channel.onclose = () => {
                 console.log('[shared] datachannel.onclose');
                 onClose && onClose();
             };
+
             channel.onerror = (e) => {
                 console.error('[shared] datachannel.onerror', e);
                 onError && onError(e);
             };
+
         } catch (e) {
             console.error('[shared] hookupChannel error', e);
         }
     }
+
 
     pc.onicecandidate = (ev) => {
         console.log('[shared] onicecandidate', !!ev.candidate);

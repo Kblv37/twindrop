@@ -2,6 +2,16 @@
 const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
+const disconnectBtn = $('#disconnectBtn');
+if (disconnectBtn) {
+    disconnectBtn.onclick = () => {
+        setStatus(statusEl, 'Соединение завершено.');
+        try { peer?.destroy(); } catch { }
+        recvBar.style.width = '0%';
+        recvText.textContent = '';
+    };
+}
+
 (async function () {
     const codeEl = $('#code');
     const copyBtn = $('#copyCode');
@@ -43,16 +53,18 @@ const socket = io(SOCKET_URL);
     function saveIfComplete() {
         const total = fileChunks.reduce((s, b) => s + b.byteLength, 0);
         setBar(recvBar, expectedSize ? total / expectedSize : 0);
+
+        const mb = (bytes) => (bytes / 1024 / 1024).toFixed(2);
         recvText.textContent = expectedSize
-            ? `${(total / 1024 / 1024).toFixed(2)} / ${(expectedSize / 1024 / 1024).toFixed(2)} MB`
-            : `${(total / 1024 / 1024).toFixed(2)} MB`;
+            ? `${mb(total)} / ${mb(expectedSize)} MB`
+            : `${mb(total)} MB`;
 
         if (expectedSize && total >= expectedSize) {
             const blob = new Blob(fileChunks);
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = fileName;
-            a.textContent = `Скачать: ${fileName} (${(expectedSize / 1024 / 1024).toFixed(2)} MB)`;
+            a.textContent = `Скачать: ${fileName} (${mb(expectedSize)} MB)`;
             a.className = 'btn';
             downloads.appendChild(a);
 
@@ -61,6 +73,7 @@ const socket = io(SOCKET_URL);
             expectedSize = 0;
         }
     }
+
 
     let peer;
 
