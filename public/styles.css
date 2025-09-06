@@ -751,7 +751,7 @@ body.theme-premium {
 
 .select-options {
   position: absolute;
-  top: -200%;
+  top: -300%;
   left: 0;
   right: 0;
   background: var(--navy-1); /* плотный фон, без прозрачности */
