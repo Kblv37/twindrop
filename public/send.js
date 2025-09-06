@@ -153,8 +153,8 @@ const socket = io(SOCKET_URL);
 
         // авто-выбор для браузера
         let CHUNK_SIZE = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')
-            ? CHUNK_SIZES.safari
-            : CHUNK_SIZES.normal;
+            ? CHUNK_SIZES.fast
+            : CHUNK_SIZES.turbo;
 
         // 👉 если хочешь протестить скорость вручную:
         // CHUNK_SIZE = CHUNK_SIZES.fast;
