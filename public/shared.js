@@ -59,8 +59,8 @@ function createPeer({ initiator, onSignal, onConnect, onData, onClose, onError }
             };
 
             channel.onmessage = (ev) => {
-                console.log('[shared] datachannel.onmessage (len=',
-                    ev.data && ev.data.byteLength ? ev.data.byteLength : (typeof ev.data), ')', ev.data);
+                // console.log('[shared] datachannel.onmessage (len=',
+                //     ev.data && ev.data.byteLength ? ev.data.byteLength : (typeof ev.data), ')', ev.data);
                 onData && onData(ev.data);
             };
 
