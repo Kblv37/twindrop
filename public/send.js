@@ -3,6 +3,22 @@ const SOCKET_URL = 'https://twindrop.onrender.com';
 const API_URL = SOCKET_URL + '/api'; // REST API
 const socket = io(SOCKET_URL);
 
+// в начале файла
+const disconnectBtn = $('#disconnectBtn');
+
+// ...
+if (disconnectBtn) {
+  disconnectBtn.onclick = () => {
+    try { peer?.destroy(); } catch {}
+    socket.emit('join-room', { code: null }); // опционально
+    setStatus(statusEl, 'Соединение завершено.');
+    sendUI.style.display = 'none';
+    socket.data.joined = false;
+    joinBtn.disabled = false;
+    joinBtn.textContent = 'Подключиться';
+  };
+}
+
 (function () {
     const codeInput = $('#codeInput');
     const joinBtn = $('#joinBtn');
@@ -128,6 +144,7 @@ const socket = io(SOCKET_URL);
         sendBtn.disabled = !(fileInput.files && fileInput.files.length);
     });
 
+    // ВЕРСИЯ С ЧАНКАМИ И BACKPRESSURE
     sendBtn.onclick = async () => {
         if (!peer || !peer.channel() || peer.channel().readyState !== 'open') {
             setStatus(statusEl, 'Канал ещё не готов.');
@@ -137,20 +154,61 @@ const socket = io(SOCKET_URL);
         const files = fileInput.files;
         if (!files || files.length === 0) return;
 
-        for (const file of files) {
-            const dc = peer.channel();
+        const dc = peer.channel();
 
-            // Отправляем метаданные
-            dc.send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
+        // Порог, при превышении которого ждём освобождения буфера
+        // 1 МБ — безопасно для большинства браузеров
+        dc.bufferedAmountLowThreshold = 1 * 1024 * 1024;
 
-            // Отправляем файл (целиком)
-            const buffer = await file.arrayBuffer();
-            dc.send(buffer);
+        // размер чанка: 64 КБ (для Safari иногда лучше 16 КБ)
+        const CHUNK_SIZE = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')
+            ? 16 * 1024
+            : 64 * 1024;
 
-            // Отправляем метку завершения
-            dc.send(JSON.stringify({ __meta: 'file-complete', name: file.name, size: file.size }));
+        const waitForDrain = () => new Promise((resolve) => {
+            if (dc.bufferedAmount <= dc.bufferedAmountLowThreshold) return resolve();
+            const onLow = () => {
+                dc.removeEventListener('bufferedamountlow', onLow);
+                resolve();
+            };
+            dc.addEventListener('bufferedamountlow', onLow);
+        });
 
-            setStatus(statusEl, `Файл ${file.name} отправлен.`);
+        try {
+            for (const file of files) {
+                // метаданные
+                dc.send(JSON.stringify({ __meta: 'file', name: file.name, size: file.size }));
+                setStatus(statusEl, `Отправка: ${file.name}`);
+                let sent = 0;
+
+                // читаем Blob по кускам
+                for (let offset = 0; offset < file.size; offset += CHUNK_SIZE) {
+                    const slice = file.slice(offset, offset + CHUNK_SIZE);
+                    const buf = await slice.arrayBuffer();
+
+                    // если буфер переполнен — ждём
+                    if (dc.bufferedAmount > dc.bufferedAmountLowThreshold) {
+                        await waitForDrain();
+                    }
+
+                    dc.send(buf);
+                    sent += buf.byteLength;
+
+                    // прогресс (если есть прогресс-бар на отправителе)
+                    const ratio = Math.min(1, sent / file.size);
+                    const sendBar = document.getElementById('sendBar');
+                    const sendText = document.getElementById('sendText');
+                    if (sendBar) sendBar.style.width = (ratio * 100).toFixed(2) + '%';
+                    if (sendText) sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+                }
+
+                // маркер завершения файла
+                dc.send(JSON.stringify({ __meta: 'file-complete', name: file.name, size: file.size }));
+                setStatus(statusEl, `Файл ${file.name} отправлен.`);
+            }
+        } catch (e) {
+            console.error('Send error:', e);
+            setStatus(statusEl, 'Ошибка при отправке: ' + (e?.message || e));
         }
     };
 
