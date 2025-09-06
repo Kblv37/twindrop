@@ -191,7 +191,7 @@ const socket = io(SOCKET_URL);
                 setStatus(statusEl, `Файл ${file.name} отправлен.`);
             }
         } catch (e) {
-            // console.error('Send error:', e);
+            console.error('Send error:', e);
             setStatus(statusEl, 'Ошибка при отправке: ' + (e?.message || e));
         }
     };
