@@ -721,3 +721,34 @@ body.theme-premium {
 .info-box li {
   margin-bottom: 4px;
 }
+
+#speedSelect {
+  appearance: none; /* убираем системный вид */
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hairline);
+  color: var(--text);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 15px;
+  transition: all .25s ease;
+  width: 100%;
+  max-width: 220px;
+
+  /* иконка стрелки */
+  background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='14' viewBox='0 0 24 24' width='14' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+}
+
+#speedSelect:hover {
+  border-color: var(--accent-1);
+  background: rgba(110, 168, 254, 0.08);
+  box-shadow: 0 0 10px rgba(110, 168, 254, 0.3);
+}
+
+#speedSelect:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(110, 168, 254, 0.6);
+}
