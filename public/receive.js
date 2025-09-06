@@ -2,16 +2,6 @@
 const SOCKET_URL = 'https://twindrop.onrender.com';
 const socket = io(SOCKET_URL);
 
-const disconnectBtn = $('#disconnectBtn');
-if (disconnectBtn) {
-    disconnectBtn.onclick = () => {
-        setStatus(statusEl, 'Соединение завершено.');
-        try { peer?.destroy(); } catch { }
-        recvBar.style.width = '0%';
-        recvText.textContent = '';
-    };
-}
-
 (async function () {
     const codeEl = $('#code');
     const copyBtn = $('#copyCode');

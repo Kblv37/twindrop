@@ -3,22 +3,6 @@ const SOCKET_URL = 'https://twindrop.onrender.com';
 const API_URL = SOCKET_URL + '/api'; // REST API
 const socket = io(SOCKET_URL);
 
-// в начале файла
-const disconnectBtn = $('#disconnectBtn');
-
-// ...
-if (disconnectBtn) {
-  disconnectBtn.onclick = () => {
-    try { peer?.destroy(); } catch {}
-    socket.emit('join-room', { code: null }); // опционально
-    setStatus(statusEl, 'Соединение завершено.');
-    sendUI.style.display = 'none';
-    socket.data.joined = false;
-    joinBtn.disabled = false;
-    joinBtn.textContent = 'Подключиться';
-  };
-}
-
 (function () {
     const codeInput = $('#codeInput');
     const joinBtn = $('#joinBtn');
