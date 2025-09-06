@@ -777,10 +777,23 @@ label[for="speedSelect"] {
 
 /* Опции */
 #speedSelect option {
-  background: var(--navy-1);
+  background-color: var(--navy-1); /* фон как везде */
   color: var(--text);
-  padding: 10px;
+  font-family: var(--font-sans);
+  padding: 10px 14px;
 }
+
+#speedSelect optgroup {
+  background-color: var(--navy-1);
+  color: var(--text-muted);
+}
+
+#speedSelect option:hover,
+#speedSelect option:focus {
+  background-color: var(--accent-2);
+  color: #fff;
+}
+
 
 /* Мобильная адаптация */
 @media (max-width: 480px) {
