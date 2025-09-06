@@ -750,7 +750,7 @@ body.theme-premium {
 }
 
 .select-options {
-  position: absolute;
+  position: fixed;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
