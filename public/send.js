@@ -141,13 +141,26 @@ const socket = io(SOCKET_URL);
         const dc = peer.channel();
 
         // Порог, при превышении которого ждём освобождения буфера
-        // 1 МБ — безопасно для большинства браузеров
-        dc.bufferedAmountLowThreshold = 1 * 1024 * 1024;
+        dc.bufferedAmountLowThreshold = 1 * 1024 * 1024; // 1 MB
 
-        // размер чанка: 64 КБ (для Safari иногда лучше 16 КБ)
-        const CHUNK_SIZE = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')
-            ? 16 * 1024
-            : 64 * 1024;
+        // 🔹 варианты размеров чанка
+        const CHUNK_SIZES = {
+            safari: 16 * 1024,   // Safari любит маленькие куски
+            normal: 64 * 1024,   // стандарт
+            fast: 128 * 1024,    // быстрее
+            turbo: 256 * 1024    // максималка
+        };
+
+        // авто-выбор для браузера
+        let CHUNK_SIZE = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')
+            ? CHUNK_SIZES.safari
+            : CHUNK_SIZES.normal;
+
+        // 👉 если хочешь протестить скорость вручную:
+        // CHUNK_SIZE = CHUNK_SIZES.fast;
+        // CHUNK_SIZE = CHUNK_SIZES.turbo;
+
+        console.log(`[send] выбран размер чанка: ${CHUNK_SIZE / 1024} KB`);
 
         const waitForDrain = () => new Promise((resolve) => {
             if (dc.bufferedAmount <= dc.bufferedAmountLowThreshold) return resolve();
@@ -165,12 +178,10 @@ const socket = io(SOCKET_URL);
                 setStatus(statusEl, `Отправка: ${file.name}`);
                 let sent = 0;
 
-                // читаем Blob по кускам
                 for (let offset = 0; offset < file.size; offset += CHUNK_SIZE) {
                     const slice = file.slice(offset, offset + CHUNK_SIZE);
                     const buf = await slice.arrayBuffer();
 
-                    // если буфер переполнен — ждём
                     if (dc.bufferedAmount > dc.bufferedAmountLowThreshold) {
                         await waitForDrain();
                     }
@@ -178,7 +189,6 @@ const socket = io(SOCKET_URL);
                     dc.send(buf);
                     sent += buf.byteLength;
 
-                    // прогресс (если есть прогресс-бар на отправителе)
                     const ratio = Math.min(1, sent / file.size);
                     const sendBar = document.getElementById('sendBar');
                     const sendText = document.getElementById('sendText');
@@ -186,7 +196,6 @@ const socket = io(SOCKET_URL);
                     if (sendText) sendText.textContent = `${(sent / 1024 / 1024).toFixed(2)} / ${(file.size / 1024 / 1024).toFixed(2)} MB`;
                 }
 
-                // маркер завершения файла
                 dc.send(JSON.stringify({ __meta: 'file-complete', name: file.name, size: file.size }));
                 setStatus(statusEl, `Файл ${file.name} отправлен.`);
             }
@@ -195,6 +204,7 @@ const socket = io(SOCKET_URL);
             setStatus(statusEl, 'Ошибка при отправке: ' + (e?.message || e));
         }
     };
+
 
     function resetPeer() {
         if (peer) {
