@@ -750,8 +750,8 @@ body.theme-premium {
 }
 
 .select-options {
-  position: fixed;
-  top: calc(100% + 4px);
+  position: absolute;
+  top: calc(80% + 4px);
   left: 0;
   right: 0;
   background: var(--navy-1); /* плотный фон, без прозрачности */
