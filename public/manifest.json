@@ -1,0 +1,20 @@
+{
+  "name": "Моё приложение",
+  "short_name": "App",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/images/pwd.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/icon.png",
+      "sizes": "100x100",
+      "type": "image/png"
+    }
+  ]
+}
