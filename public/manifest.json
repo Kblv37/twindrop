@@ -1,6 +1,6 @@
 {
   "name": "Twindrop share",
-  "short_name": "App",
+  "short_name": "Twindrop share",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
