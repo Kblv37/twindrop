@@ -1,5 +1,5 @@
 {
-  "name": "Моё приложение",
+  "name": "Twindrop share",
   "short_name": "App",
   "start_url": "./index.html",
   "display": "standalone",
