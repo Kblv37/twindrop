@@ -142,7 +142,7 @@ const socket = io(SOCKET_URL);
         if (dc.readyState !== 'open') {
             setStatus(statusEl, 'Ждём открытия канала…');
             await new Promise((resolve, reject) => {
-                const timer = setTimeout(() => reject(new Error("Канал не открылся")), 8000);
+                const timer = setTimeout(() => reject(new Error("Канал не открылся")), 60000);
                 dc.addEventListener('open', () => {
                     clearTimeout(timer);
                     resolve();
