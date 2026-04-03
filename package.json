@@ -4,7 +4,12 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node scripts/write-client-config.js",
+    "build:client-config": "node scripts/write-client-config.js",
+    "dev:backend": "node server.js",
+    "dev:frontend": "node scripts/write-client-config.js && node scripts/serve-static.js",
+    "prestart": "node scripts/write-client-config.js",
+    "test": "node --test --test-concurrency=1 --test-isolation=none test/server.test.js",
     "start": "node server.js"
   },
   "keywords": [],

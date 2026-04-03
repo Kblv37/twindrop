@@ -1,24 +1,20 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="google-site-verification" content="8mFdQ6fx2vbKs1ynhCqDihabZ7TNBR-_lQ8d4FD6NLE" />
-  <meta name="yandex-verification" content="083b69efd32bfc0d" />
-  <meta name="description"
-    content="Twindrop — это лёгкий и элегантный сервис P2P‑обмена файлами прямо в браузере. Ни регистрации, ни облаков, ни посредников. Только вы, получатель и защищённый канал по WebRTC.">
-  <title>Отправить файл | Twindrop, P2P share</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.socket.io; connect-src 'self' https: wss:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta name="description" content="Twindrop — безопасная отправка файлов напрямую через WebRTC.">
+  <title>Отправить файл | Twindrop</title>
   <link rel="icon" type="image/png" sizes="64x64" href="/images/icon64.ico">
   <link rel="icon" type="image/png" sizes="100x100" href="/images/icon.png">
   <link rel="apple-touch-icon" sizes="512x512" href="/images/pwd.png">
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <script src="shared.js" defer></script>
-  <script src="send.js" defer></script>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app-config.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script type="module" src="/js/pages/send-page.js"></script>
 </head>
-
 <body class="theme-premium">
   <div class="bg">
     <div class="bg-gradient"></div>
@@ -26,12 +22,13 @@
     <div class="bg-noise" aria-hidden="true"></div>
   </div>
 
-  <header class="app-header" role="banner" aria-label="Навигация P2P Share">
+  <header class="app-header" role="banner" aria-label="Навигация Twindrop">
     <div class="header-inner container">
       <h1><a class="brand" href="/">Twindrop</a></h1>
       <nav class="nav" aria-label="Основная навигация">
-        <a class="nav-link ripple" href="/">Получить</a>
-        <a class="nav-link ripple" href="/send">Отправить</a>
+        <a class="nav-link" href="/">Получить</a>
+        <a class="nav-link" href="/send.html">Отправить</a>
+        <a class="nav-link" href="/about.html">О проекте</a>
       </nav>
     </div>
     <div class="hairline"></div>
@@ -41,63 +38,52 @@
     <div class="wrap">
       <h1 class="page-title">Отправить файл</h1>
 
-      <section class="section glass" aria-labelledby="join-title">
-        <h2 id="join-title" class="visually-hidden">Подключение по коду</h2>
+      <section class="section glass" aria-labelledby="room-title">
+        <h2 id="room-title" class="section-title">Подключение к комнате</h2>
         <div class="row join-row">
-          <input id="codeInput" class="input mono upper" style="font-size: clamp(28px, 7vw, 48px);"
-            placeholder="6-значный код" maxlength="6" inputmode="numeric" aria-label="6-значный код" />
-          <button id="joinBtn" class="btn ripple gloss">Подключиться</button>
+          <label class="field-group grow">
+            <span class="small muted">Код комнаты</span>
+            <input id="codeInput" class="input mono" maxlength="6" inputmode="numeric" placeholder="Введите 6 цифр">
+          </label>
+          <button id="joinBtn" class="btn gloss" disabled>Подключиться</button>
         </div>
-
-        <label for="speedSelect">Скорость передачи:</label>
-        <div class="select-wrapper">
-          <div class="select-display">Стандарт (64 KB)</div>
-          <ul class="select-options">
-            <li data-value="16">Медленно (16 KB)</li>
-            <li data-value="64" class="active">Надёждно (64 KB — для Safari)</li>
-            <li data-value="128">Страндант (128 KB)</li>
-            <li data-value="256">Быстро (256 KB)</li>
-            <li data-value="512">Эксперимент (512 KB)</li>
-          </ul>
-          <select id="speedSelect" hidden>
-            <option value="16">Медленно (16 KB)</option>
-            <option value="64" selected>Надёжно (64 KB — для Safari)</option>
-            <option value="128">Стандарт (128 KB)</option>
-            <option value="256">Быстро (256 KB)</option>
-            <option value="512">Эксперимент (512 KB)</option>
-          </select>
-        </div>
-
-
-        <div class="small muted" style="margin-top:8px">Или откройте эту страницу по QR — код подставится сам.</div>
+        <div id="roomHint" class="small muted hint">Введите код комнаты, который показан у получателя.</div>
       </section>
 
-      <section id="sendUI" class="section glass" style="display:none" aria-labelledby="send-title">
-        <h2 id="send-title" class="section-title">Передача</h2>
+      <section id="sendPanel" class="section glass" hidden aria-labelledby="transfer-title">
+        <h2 id="transfer-title" class="section-title">Передача</h2>
+        <label class="field-group">
+          <span class="small muted">Ссылка на эту комнату</span>
+          <input id="shareLink" class="input mono" readonly>
+        </label>
 
-        <!-- Дропзона (обёртка вокруг существующего input#file) -->
-        <div class="dropzone" role="button" tabindex="0" aria-label="Выберите файл или перетащите сюда">
+        <div class="row">
+          <label class="field-group grow">
+            <span class="small muted">Размер чанка</span>
+            <select id="chunkSize" class="input"></select>
+          </label>
+        </div>
+
+        <label id="dropzone" class="dropzone" for="fileInput">
+          <input type="file" id="fileInput" multiple>
           <div class="dz-visual">
-            <div class="dz-icon" aria-hidden="true">⤓</div>
+            <div class="dz-icon" aria-hidden="true">⇪</div>
             <div class="dz-text">
-              <div class="dz-title">Перетащите файл сюда</div>
-              <div class="dz-sub muted">или кликните для выбора</div>
+              <div class="dz-title">Выберите файл или перетащите его сюда</div>
+              <div class="dz-sub muted">Передача идёт напрямую по WebRTC.</div>
             </div>
           </div>
-          <input type="file" id="file" aria-label="Файл для отправки" multiple />
+        </label>
+
+        <div class="row">
+          <button id="sendBtn" class="btn gloss" disabled>Отправить</button>
         </div>
 
-        <div class="row actions-row">
-          <button id="sendBtn" class="btn ripple gloss" disabled>Отправить</button>
-        </div>
-
-        <div class="row" style="margin-top:12px">
-          <div class="progress-wrap">
-            <div class="progress" aria-label="Ход передачи">
-              <div id="sendBar" class="bar"></div>
-            </div>
-            <div id="sendText" class="small muted">Ожидание подключения получателя…</div>
+        <div class="progress-wrap">
+          <div class="progress" aria-label="Ход отправки файла">
+            <div id="sendBar" class="bar"></div>
           </div>
+          <div id="sendText" class="small muted">Ожидаем подключение получателя…</div>
         </div>
       </section>
 
@@ -107,113 +93,8 @@
 
   <footer class="app-footer" role="contentinfo">
     <div class="container footer-inner">
-
-      <div class="social">
-        <a class="social-btn ripple" href="https://t.me/h4tenigg4s" target="_blank" rel="noopener"
-          aria-label="Telegram @h4tenigg4s" data-tooltip="Telegram">
-          <!-- Telegram SVG -->
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M9.04 15.02 8.9 19.2c.41 0 .6-.18.82-.4l1.96-1.88 4.06 2.98c.75.41 1.28.2 1.49-.7l2.7-12.64c.24-1.1-.42-1.53-1.13-1.26L3.6 10.1c-1.08.42-1.06 1.02-.18 1.29l4.36 1.36 10.11-6.37c.48-.3.92-.14.56.16" />
-          </svg>
-        </a>
-        <a class="social-btn ripple" href="https://x.com/kblv37" target="_blank" rel="noopener"
-          aria-label="Twitter X @kblv37" data-tooltip="X / Twitter">
-          <!-- X SVG -->
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 3h3l-7.5 8.6L22 21h-6l-4.5-5.6L6 21H3l7.9-9.1L2 3h6l4.1 5.3L18 3z" />
-          </svg>
-        </a>
-        <a class="social-btn ripple" href="https://www.linkedin.com/in/jahongir-qobilov-76a742275" target="_blank"
-          rel="noopener" aria-label="LinkedIn" data-tooltip="LinkedIn">
-          <!-- LinkedIn SVG -->
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM0 8h5v16H0V8zm7.5 0H12v2.2h.06c.63-1.2 2.18-2.46 4.49-2.46 4.8 0 5.68 3.16 5.68 7.26V24h-5v-6.93c0-1.65-.03-3.77-2.3-3.77-2.3 0-2.65 1.79-2.65 3.64V24h-5V8z" />
-          </svg>
-        </a>
-        <a class="social-btn ripple" href="about.html" target="_blank" rel="noopener" aria-label="About Twindrop"
-          data-tooltip="About Twindrop" for="about">
-          <!-- About Twindrop -->
-          <span>About</span>
-        </a>
-      </div>
+      <span class="muted small">Файлы не проходят через сервер и не сохраняются.</span>
     </div>
   </footer>
-
-  <script>
-    const PRM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    document.addEventListener('keydown', (e) => { if (e.key === 'Tab') document.documentElement.classList.add('kbd-nav'); }, { passive: true });
-    document.addEventListener('mousedown', () => { document.documentElement.classList.remove('kbd-nav'); }, { passive: true });
-
-    // Ввод кода: только цифры, авто-uppercase, aria-invalid
-    const codeInput = document.getElementById('codeInput');
-    if (codeInput) {
-      codeInput.addEventListener('input', () => {
-        const digits = codeInput.value.replace(/\D/g, '').slice(0, 6);
-        codeInput.value = digits;
-        codeInput.setAttribute('aria-invalid', digits.length === 6 ? 'false' : 'true');
-      });
-    }
-
-    // Дропзона вокруг #file
-    const fileInput = document.getElementById('file');
-    const dz = document.querySelector('.dropzone');
-    const sendBtn = document.getElementById('sendBtn');
-    if (fileInput && dz) {
-      const activate = (on) => dz.classList.toggle('drag-over', !!on);
-      const setFile = (file) => {
-        dz.querySelector('.dz-title').textContent = file.name;
-        dz.querySelector('.dz-sub').textContent = (file.size ? (Math.round(file.size / 1024 / 1024 * 100) / 100) + ' MB' : 'Размер неизвестен');
-        sendBtn && (sendBtn.disabled = false);
-      };
-      dz.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
-      ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, (e) => { e.preventDefault(); activate(true); }));
-      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, (e) => { e.preventDefault(); activate(false); }));
-      dz.addEventListener('drop', (e) => {
-        const f = e.dataTransfer.files?.[0];
-        if (f) { fileInput.files = e.dataTransfer.files; setFile(f); }
-      });
-      fileInput.addEventListener('change', () => { if (fileInput.files?.[0]) setFile(fileInput.files[0]); });
-    }
-
-
-    const display = document.querySelector('.select-display');
-    const options = document.querySelector('.select-options');
-    const hiddenSelect = document.getElementById('speedSelect');
-
-    display.addEventListener('click', () => {
-      options.style.display = options.style.display === 'block' ? 'none' : 'block';
-    });
-
-    options.querySelectorAll('li').forEach(li => {
-      li.addEventListener('click', () => {
-        // обновить отображение
-        display.textContent = li.textContent;
-
-        // выделить выбранное
-        options.querySelectorAll('li').forEach(o => o.classList.remove('active'));
-        li.classList.add('active');
-
-        // обновить скрытый select
-        hiddenSelect.value = li.dataset.value;
-
-        // закрыть список
-        options.style.display = 'none';
-
-        console.log(`Выбрана скорость: ${hiddenSelect.value} KB`);
-      });
-    });
-
-    // закрыть список при клике вне
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.select-wrapper')) {
-        options.style.display = 'none';
-      }
-    });
-
-  </script>
 </body>
-
 </html>

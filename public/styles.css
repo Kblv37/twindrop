@@ -213,6 +213,20 @@ body.theme-premium {
   flex-wrap: wrap;
 }
 
+.grow {
+  flex: 1 1 260px;
+}
+
+.field-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.hint {
+  margin-top: 8px;
+}
+
 /* Код + QR раскладка */
 .code-qr-row {
   align-items: flex-start;
@@ -417,6 +431,27 @@ body.theme-premium {
   height: 100%;
   opacity: 0;
   cursor: pointer;
+}
+
+.downloads {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.download-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.download-card:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .dz-visual {
@@ -674,6 +709,10 @@ body.theme-premium {
   .join-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .field-group {
+    width: 100%;
   }
 }
 
