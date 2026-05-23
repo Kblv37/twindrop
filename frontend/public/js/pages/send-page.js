@@ -24,6 +24,7 @@ async function init() {
     chunkSizeSelect: $('#chunkSize'),
     shareLink: $('#shareLink'),
     dropzoneSubtext: document.querySelector('#dropzone .dz-sub'),
+    fileList: $('#fileList'),
   };
 
   const state = {
@@ -225,24 +226,52 @@ async function init() {
     }
   });
 
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function renderFileList(files) {
+    if (!elements.fileList) return;
+    elements.fileList.innerHTML = '';
+    if (!files || files.length === 0) return;
+
+    files.forEach((file) => {
+      const item = document.createElement('div');
+      item.className = 'file-list-item';
+
+      const iconWrap = document.createElement('div');
+      iconWrap.className = 'file-list-icon';
+      iconWrap.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+
+      const name = document.createElement('span');
+      name.className = 'file-list-name';
+      name.textContent = file.name;
+      name.title = file.name;
+
+      const size = document.createElement('span');
+      size.className = 'file-list-size';
+      size.textContent = formatFileSize(file.size);
+
+      item.append(iconWrap, name, size);
+      elements.fileList.appendChild(item);
+    });
+  }
+
   elements.fileInput.addEventListener('change', () => {
-    setDisabled(elements.sendButton, !(state.session?.isReady() && elements.fileInput.files?.length));
-    if (!elements.dropzoneSubtext) {
-      return;
-    }
-
     const files = Array.from(elements.fileInput.files || []);
+    setDisabled(elements.sendButton, !(state.session?.isReady() && files.length));
+    renderFileList(files);
+
+    if (!elements.dropzoneSubtext) return;
     if (files.length === 0) {
-      elements.dropzoneSubtext.textContent = 'или нажмите, чтобы выбрать в памяти устройства';
-      return;
-    }
-
-    if (files.length === 1) {
+      elements.dropzoneSubtext.textContent = 'Поддерживаются любые форматы файлов';
+    } else if (files.length === 1) {
       elements.dropzoneSubtext.textContent = `Выбран файл: ${files[0].name}`;
-      return;
+    } else {
+      elements.dropzoneSubtext.textContent = `Выбрано файлов: ${files.length}`;
     }
-
-    elements.dropzoneSubtext.textContent = `Выбрано файлов: ${files.length}`;
   });
 
   elements.sendButton.addEventListener('click', sendFiles);
