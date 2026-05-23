@@ -2,3 +2,4 @@ node_modules/
 .env
 twindrop.txt
 README.md
+.kiro/
