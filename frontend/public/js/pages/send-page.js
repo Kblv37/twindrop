@@ -33,6 +33,7 @@ async function init() {
     pendingSignals: [],
     session: null,
     keepAliveTimer: null,
+    completedTransfers: new Set(),
   };
 
   const sender = new FileSender({
@@ -48,14 +49,19 @@ async function init() {
         `${sanitizeText(fileName)} · ${formatBytes(sentBytes)} / ${formatBytes(totalBytes)}`,
       );
     },
-    onRemoteProgress: ({ fileName, receivedBytes, totalBytes }) => {
+    onRemoteProgress: ({ stage, transferId, fileName, receivedBytes, totalBytes }) => {
       const ratio = totalBytes > 0 ? receivedBytes / totalBytes : 0;
       setProgress(
         elements.sendBar,
         elements.sendText,
         ratio,
-        `Доставлено: ${sanitizeText(fileName)} · ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`,
+        `Передача: ${sanitizeText(fileName)} · ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`,
       );
+
+      if (stage === 'complete' && transferId && !state.completedTransfers.has(transferId)) {
+        state.completedTransfers.add(transferId);
+        showNotice(elements.status, { type: 'success', message: `Получатель подтвердил файл: ${sanitizeText(fileName)}.` });
+      }
     },
   });
 

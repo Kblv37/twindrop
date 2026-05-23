@@ -100,6 +100,7 @@ export class FileSender {
       }
 
       this.onRemoteProgress?.({
+        stage: 'progress',
         transferId: controlMessage.transferId,
         fileName: sanitizeFileName(controlMessage.fileName || ''),
         receivedBytes,
@@ -110,6 +111,7 @@ export class FileSender {
 
     if (controlMessage.type === CONTROL_TYPES.COMPLETE_ACK) {
       this.onRemoteProgress?.({
+        stage: 'complete',
         transferId: controlMessage.transferId,
         fileName: sanitizeFileName(controlMessage.fileName || ''),
         receivedBytes: Number(controlMessage.totalBytes) || 0,
