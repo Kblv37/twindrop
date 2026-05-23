@@ -393,8 +393,8 @@ select.input {
   align-items: center;
 }
 .qr {
-  width: 180px;
-  height: 180px;
+  width: 192px;
+  height: 192px;
   background: #fff;
   border-radius: var(--radius-sm);
   display: grid;
