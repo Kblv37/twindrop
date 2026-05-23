@@ -1,0 +1,9 @@
+{
+  "name": "twindrop-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/write-client-config.js",
+    "build:client-config": "node scripts/write-client-config.js"
+  }
+}
