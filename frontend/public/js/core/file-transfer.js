@@ -18,6 +18,10 @@ function isControlMessage(value) {
   }
 }
 
+function isValidTransferId(value) {
+  return typeof value === 'string' && value.length >= 8 && value.length <= 128;
+}
+
 export class FileSender {
   constructor({
     getChannel,
@@ -95,23 +99,32 @@ export class FileSender {
         chunkSize,
       });
 
-      for (let offset = 0; offset < file.size; offset += chunkSize) {
-        const slice = file.slice(offset, offset + chunkSize);
-        const buffer = await slice.arrayBuffer();
+      try {
+        for (let offset = 0; offset < file.size; offset += chunkSize) {
+          const slice = file.slice(offset, offset + chunkSize);
+          const buffer = await slice.arrayBuffer();
 
-        await this.waitForWritable(channel);
-        channel.send(buffer);
-        sentBytes += buffer.byteLength;
+          await this.waitForWritable(channel);
+          channel.send(buffer);
+          sentBytes += buffer.byteLength;
 
-        this.onProgress?.({
-          fileName,
-          sentBytes,
-          totalBytes: file.size,
-        });
+          this.onProgress?.({
+            fileName,
+            sentBytes,
+            totalBytes: file.size,
+          });
 
-        if ((offset / chunkSize) % 8 === 0) {
-          await yieldToBrowser();
+          if ((offset / chunkSize) % 8 === 0) {
+            await yieldToBrowser();
+          }
         }
+      } catch (error) {
+        this.sendControlMessage(channel, {
+          type: CONTROL_TYPES.ERROR,
+          transferId,
+          message: 'Передача файла была прервана.',
+        });
+        throw error;
       }
 
       this.sendControlMessage(channel, {
@@ -146,6 +159,11 @@ export class FileReceiver {
   }
 
   handleMeta(message) {
+    if (!isValidTransferId(message.transferId)) {
+      this.failTransfer('Получен некорректный идентификатор передачи.');
+      return;
+    }
+
     const fileName = sanitizeFileName(message.fileName);
     const fileSize = Number(message.fileSize);
 
@@ -171,7 +189,7 @@ export class FileReceiver {
   }
 
   finalizeTransfer(message) {
-    if (!this.activeTransfer || message.transferId !== this.activeTransfer.transferId) {
+    if (!this.activeTransfer || !isValidTransferId(message.transferId) || message.transferId !== this.activeTransfer.transferId) {
       return;
     }
 

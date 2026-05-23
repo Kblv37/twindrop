@@ -27,6 +27,7 @@ async function init() {
     peerId: '',
     pendingSignals: [],
     session: null,
+    keepAliveTimer: null,
   };
 
   const receiver = new FileReceiver({
@@ -124,11 +125,22 @@ async function init() {
 
   function renderQr(url) {
     elements.qr.textContent = '';
-    new window.QRCode(elements.qr, {
-      text: url,
-      width: 192,
-      height: 192,
-    });
+    if (typeof window.QRCode !== 'function') {
+      const fallback = document.createElement('div');
+      fallback.className = 'small muted';
+      fallback.textContent = 'QR временно недоступен, используйте ссылку ниже.';
+      elements.qr.appendChild(fallback);
+      return;
+    }
+
+    new window.QRCode(elements.qr, { text: url, width: 192, height: 192 });
+  }
+
+  function startKeepAlive() {
+    window.clearInterval(state.keepAliveTimer);
+    state.keepAliveTimer = window.setInterval(() => {
+      api.ping().catch(() => {});
+    }, 140000);
   }
 
   state.code = await api.createRoom();
@@ -140,8 +152,12 @@ async function init() {
   socket = createSocket(config);
 
   elements.copyButton.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(state.code);
-    showNotice(elements.status, { type: 'success', message: 'Код комнаты скопирован.' });
+    try {
+      await navigator.clipboard.writeText(state.code);
+      showNotice(elements.status, { type: 'success', message: 'Код комнаты скопирован.' });
+    } catch {
+      showNotice(elements.status, { type: 'warning', message: 'Не удалось скопировать автоматически.' });
+    }
   });
 
   socket.on('connect', async () => {
@@ -199,6 +215,7 @@ async function init() {
   });
 
   window.addEventListener('beforeunload', () => {
+    window.clearInterval(state.keepAliveTimer);
     if (state.joined) {
       socket.emit('leave-room', { code: state.code });
     }
@@ -210,11 +227,13 @@ async function init() {
     await joinRoom();
     showNotice(elements.status, { type: 'info', message: 'Комната создана. Ждём отправителя…' });
   }
+
+  startKeepAlive();
 }
 
-init().catch(() => {
+init().catch((error) => {
   showNotice(document.querySelector('#status'), {
     type: 'error',
-    message: 'Не удалось инициализировать страницу получения.',
+    message: `Не удалось инициализировать страницу получения: ${error?.message || 'неизвестная ошибка'}.`,
   });
 });

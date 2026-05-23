@@ -60,6 +60,9 @@ export function createApiClient(config) {
       const payload = await fetchJson(`${baseUrl}/client-config`);
       return payload.config;
     },
+    async ping() {
+      return fetchJson(`${baseUrl}/health`, { timeoutMs: 6000 });
+    },
   };
 }
 

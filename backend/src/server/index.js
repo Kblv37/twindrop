@@ -1,4 +1,6 @@
 const http = require('http');
+const https = require('https');
+const { URL } = require('url');
 
 const { createApp } = require('./app');
 const { loadConfig } = require('./config');
@@ -28,6 +30,22 @@ async function startServer() {
 
   cleanupInterval.unref();
 
+  const selfPingInterval = config.selfPingUrl
+    ? setInterval(() => {
+      try {
+        const pingUrl = new URL(config.selfPingUrl);
+        const client = pingUrl.protocol === 'https:' ? https : http;
+        const req = client.get(pingUrl, { timeout: 10_000 }, (res) => {
+          res.resume();
+        });
+        req.on('error', () => {});
+        req.on('timeout', () => req.destroy());
+      } catch {}
+    }, config.keepAliveIntervalMs)
+    : null;
+
+  selfPingInterval?.unref();
+
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(config.port, config.host, resolve);
@@ -42,6 +60,9 @@ async function startServer() {
   const shutdown = (signal) => {
     logger.info('shutting down server', { signal });
     clearInterval(cleanupInterval);
+    if (selfPingInterval) {
+      clearInterval(selfPingInterval);
+    }
     io.close();
     server.close(() => process.exit(0));
   };

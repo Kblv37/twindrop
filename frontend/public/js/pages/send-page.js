@@ -31,6 +31,7 @@ async function init() {
     peerId: '',
     pendingSignals: [],
     session: null,
+    keepAliveTimer: null,
   };
 
   const sender = new FileSender({
@@ -171,6 +172,13 @@ async function init() {
     }
   }
 
+  function startKeepAlive() {
+    window.clearInterval(state.keepAliveTimer);
+    state.keepAliveTimer = window.setInterval(() => {
+      api.ping().catch(() => {});
+    }, 140000);
+  }
+
   elements.codeInput.addEventListener('input', async () => {
     const code = normalizeRoomCode(elements.codeInput.value, config.roomCodeLength);
     elements.codeInput.value = code;
@@ -284,6 +292,7 @@ async function init() {
   });
 
   window.addEventListener('beforeunload', () => {
+    window.clearInterval(state.keepAliveTimer);
     if (state.joined) {
       socket.emit('leave-room', { code: state.code });
     }
@@ -313,11 +322,13 @@ async function init() {
   } else {
     updateRoomHint('Введите код комнаты, который показан у получателя.');
   }
+
+  startKeepAlive();
 }
 
-init().catch(() => {
+init().catch((error) => {
   showNotice(document.querySelector('#status'), {
     type: 'error',
-    message: 'Не удалось инициализировать страницу отправки.',
+    message: `Не удалось инициализировать страницу отправки: ${error?.message || 'неизвестная ошибка'}.`,
   });
 });

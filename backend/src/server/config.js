@@ -157,6 +157,8 @@ function loadConfig() {
     socketSignalLimit: parseInteger(process.env.TWINDROP_SOCKET_SIGNAL_LIMIT, 240, { min: 1 }),
     socketPath: process.env.TWINDROP_SOCKET_PATH || '/socket.io',
     reconnectAttempts: parseInteger(process.env.TWINDROP_RECONNECT_ATTEMPTS, 4, { min: 0, max: 10 }),
+    keepAliveIntervalMs: parseInteger(process.env.TWINDROP_KEEPALIVE_INTERVAL_MS, 140_000, { min: 60_000 }),
+    selfPingUrl: process.env.TWINDROP_SELF_PING_URL || '',
     chunkSizeOptions: parseChunkSizes(process.env.TWINDROP_ALLOWED_CHUNK_SIZES),
     iceServers: parseIceServers(process.env.TWINDROP_ICE_SERVERS),
     frontendUrl,
