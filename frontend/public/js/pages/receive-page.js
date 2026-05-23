@@ -31,6 +31,11 @@ async function init() {
   };
 
   const receiver = new FileReceiver({
+    sendControl: (payload) => {
+      try {
+        state.session?.sendMessage(JSON.stringify(payload));
+      } catch {}
+    },
     maxFileSizeBytes: config.maxFileSizeBytes,
     onProgress: ({ fileName, receivedBytes, totalBytes }) => {
       const ratio = totalBytes > 0 ? receivedBytes / totalBytes : 0;

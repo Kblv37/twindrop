@@ -43,7 +43,7 @@
         <div class="row join-row">
           <label class="field-group grow">
             <span class="small muted">Код комнаты</span>
-            <input id="codeInput" class="input mono" maxlength="6" inputmode="numeric" placeholder="Введите 6 цифр">
+            <input id="codeInput" class="input mono room-code-input" maxlength="6" inputmode="numeric" placeholder="000000">
           </label>
           <button id="joinBtn" class="btn gloss" disabled>Подключиться</button>
         </div>
@@ -67,10 +67,11 @@
         <label id="dropzone" class="dropzone" for="fileInput">
           <input type="file" id="fileInput" multiple>
           <div class="dz-visual">
-            <div class="dz-icon" aria-hidden="true">⇪</div>
+            <div class="dz-icon" aria-hidden="true">+</div>
             <div class="dz-text">
-              <div class="dz-title">Выберите файл или перетащите его сюда</div>
-              <div class="dz-sub muted">Передача идёт напрямую по WebRTC.</div>
+              <div class="dz-title">Перетащите файлы сюда</div>
+              <div class="dz-sub muted">или нажмите, чтобы выбрать в памяти устройства</div>
+              <div class="dz-cta">Выбрать файлы</div>
             </div>
           </div>
         </label>

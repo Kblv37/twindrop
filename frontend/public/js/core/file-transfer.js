@@ -2,7 +2,9 @@ import { createTransferId, formatBytes, sanitizeFileName, yieldToBrowser } from 
 
 const CONTROL_TYPES = {
   META: 'transfer-meta',
+  PROGRESS: 'transfer-progress',
   COMPLETE: 'transfer-complete',
+  COMPLETE_ACK: 'transfer-complete-ack',
   ERROR: 'transfer-error',
 };
 
@@ -28,11 +30,13 @@ export class FileSender {
     maxFileSizeBytes,
     maxFilesPerTransfer,
     onProgress,
+    onRemoteProgress,
   }) {
     this.getChannel = getChannel;
     this.maxFileSizeBytes = maxFileSizeBytes;
     this.maxFilesPerTransfer = maxFilesPerTransfer;
     this.onProgress = onProgress;
+    this.onRemoteProgress = onRemoteProgress;
   }
 
   validateFiles(files) {
@@ -55,13 +59,19 @@ export class FileSender {
     }
   }
 
-  async waitForWritable(channel) {
+  async waitForWritable(channel, timeoutMs = 15000) {
     if (channel.bufferedAmount <= channel.bufferedAmountLowThreshold) {
       return;
     }
 
-    await new Promise((resolve) => {
+    await new Promise((resolve, reject) => {
+      const timer = window.setTimeout(() => {
+        channel.removeEventListener('bufferedamountlow', handleLow);
+        reject(new Error('data-channel-backpressure-timeout'));
+      }, timeoutMs);
+
       const handleLow = () => {
+        window.clearTimeout(timer);
         channel.removeEventListener('bufferedamountlow', handleLow);
         resolve();
       };
@@ -72,6 +82,40 @@ export class FileSender {
 
   sendControlMessage(channel, payload) {
     channel.send(JSON.stringify(payload));
+  }
+
+  handleData(data) {
+    const controlMessage = isControlMessage(data);
+
+    if (!controlMessage || !isValidTransferId(controlMessage.transferId)) {
+      return;
+    }
+
+    if (controlMessage.type === CONTROL_TYPES.PROGRESS) {
+      const receivedBytes = Number(controlMessage.receivedBytes);
+      const totalBytes = Number(controlMessage.totalBytes);
+
+      if (!Number.isFinite(receivedBytes) || !Number.isFinite(totalBytes) || totalBytes <= 0) {
+        return;
+      }
+
+      this.onRemoteProgress?.({
+        transferId: controlMessage.transferId,
+        fileName: sanitizeFileName(controlMessage.fileName || ''),
+        receivedBytes,
+        totalBytes,
+      });
+      return;
+    }
+
+    if (controlMessage.type === CONTROL_TYPES.COMPLETE_ACK) {
+      this.onRemoteProgress?.({
+        transferId: controlMessage.transferId,
+        fileName: sanitizeFileName(controlMessage.fileName || ''),
+        receivedBytes: Number(controlMessage.totalBytes) || 0,
+        totalBytes: Number(controlMessage.totalBytes) || 0,
+      });
+    }
   }
 
   async sendFiles(files, chunkSize) {
@@ -103,6 +147,10 @@ export class FileSender {
         for (let offset = 0; offset < file.size; offset += chunkSize) {
           const slice = file.slice(offset, offset + chunkSize);
           const buffer = await slice.arrayBuffer();
+
+          if (channel.readyState !== 'open') {
+            throw new Error('data-channel-closed');
+          }
 
           await this.waitForWritable(channel);
           channel.send(buffer);
@@ -137,11 +185,13 @@ export class FileSender {
 
 export class FileReceiver {
   constructor({
+    sendControl,
     maxFileSizeBytes,
     onProgress,
     onTransferReady,
     onError,
   }) {
+    this.sendControl = sendControl;
     this.maxFileSizeBytes = maxFileSizeBytes;
     this.onProgress = onProgress;
     this.onTransferReady = onTransferReady;
@@ -179,6 +229,7 @@ export class FileReceiver {
       mimeType: typeof message.mimeType === 'string' ? message.mimeType : 'application/octet-stream',
       receivedBytes: 0,
       chunks: [],
+      nextProgressThreshold: 256 * 1024,
     };
 
     this.onProgress?.({
@@ -205,6 +256,13 @@ export class FileReceiver {
       fileSize: this.activeTransfer.fileSize,
       blob,
       href: URL.createObjectURL(blob),
+    });
+
+    this.sendControl?.({
+      type: CONTROL_TYPES.COMPLETE_ACK,
+      transferId: this.activeTransfer.transferId,
+      fileName: this.activeTransfer.fileName,
+      totalBytes: this.activeTransfer.fileSize,
     });
 
     this.resetActiveTransfer();
@@ -236,6 +294,20 @@ export class FileReceiver {
       receivedBytes: this.activeTransfer.receivedBytes,
       totalBytes: this.activeTransfer.fileSize,
     });
+
+    if (
+      this.activeTransfer.receivedBytes >= this.activeTransfer.nextProgressThreshold ||
+      this.activeTransfer.receivedBytes === this.activeTransfer.fileSize
+    ) {
+      this.sendControl?.({
+        type: CONTROL_TYPES.PROGRESS,
+        transferId: this.activeTransfer.transferId,
+        fileName: this.activeTransfer.fileName,
+        receivedBytes: this.activeTransfer.receivedBytes,
+        totalBytes: this.activeTransfer.fileSize,
+      });
+      this.activeTransfer.nextProgressThreshold = this.activeTransfer.receivedBytes + 256 * 1024;
+    }
   }
 
   handleData(data) {
@@ -253,6 +325,10 @@ export class FileReceiver {
 
     if (controlMessage?.type === CONTROL_TYPES.ERROR) {
       this.failTransfer(controlMessage.message || 'Отправитель прервал передачу.');
+      return;
+    }
+
+    if (controlMessage) {
       return;
     }
 

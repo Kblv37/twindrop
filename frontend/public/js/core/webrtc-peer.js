@@ -177,6 +177,14 @@ export class WebRtcPeerSession {
     return this.channel;
   }
 
+  sendMessage(data) {
+    if (!this.channel || this.channel.readyState !== 'open') {
+      throw new Error('data-channel-not-open');
+    }
+
+    this.channel.send(data);
+  }
+
   isReady() {
     return this.channel?.readyState === 'open';
   }

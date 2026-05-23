@@ -23,6 +23,7 @@ async function init() {
     sendPanel: $('#sendPanel'),
     chunkSizeSelect: $('#chunkSize'),
     shareLink: $('#shareLink'),
+    dropzoneSubtext: document.querySelector('#dropzone .dz-sub'),
   };
 
   const state = {
@@ -45,6 +46,15 @@ async function init() {
         elements.sendText,
         ratio,
         `${sanitizeText(fileName)} · ${formatBytes(sentBytes)} / ${formatBytes(totalBytes)}`,
+      );
+    },
+    onRemoteProgress: ({ fileName, receivedBytes, totalBytes }) => {
+      const ratio = totalBytes > 0 ? receivedBytes / totalBytes : 0;
+      setProgress(
+        elements.sendBar,
+        elements.sendText,
+        ratio,
+        `Доставлено: ${sanitizeText(fileName)} · ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`,
       );
     },
   });
@@ -90,6 +100,9 @@ async function init() {
         } catch {
           showNotice(elements.status, { type: 'error', message: 'Не удалось отправить сигнал соединения.' });
         }
+      },
+      onMessage: (data) => {
+        sender.handleData(data);
       },
       onStateChange: ({ connectionState }) => {
         if (connectionState === 'connected') {
@@ -163,7 +176,7 @@ async function init() {
       const chunkSize = Number(elements.chunkSizeSelect.value);
       const files = Array.from(elements.fileInput.files || []);
       await sender.sendFiles(files, chunkSize);
-      showNotice(elements.status, { type: 'success', message: 'Файлы отправлены.' });
+      showNotice(elements.status, { type: 'info', message: 'Файлы отправлены в канал. Ожидаем подтверждение получения…' });
     } catch (error) {
       showNotice(elements.status, {
         type: 'error',
@@ -208,6 +221,22 @@ async function init() {
 
   elements.fileInput.addEventListener('change', () => {
     setDisabled(elements.sendButton, !(state.session?.isReady() && elements.fileInput.files?.length));
+    if (!elements.dropzoneSubtext) {
+      return;
+    }
+
+    const files = Array.from(elements.fileInput.files || []);
+    if (files.length === 0) {
+      elements.dropzoneSubtext.textContent = 'или нажмите, чтобы выбрать в памяти устройства';
+      return;
+    }
+
+    if (files.length === 1) {
+      elements.dropzoneSubtext.textContent = `Выбран файл: ${files[0].name}`;
+      return;
+    }
+
+    elements.dropzoneSubtext.textContent = `Выбрано файлов: ${files.length}`;
   });
 
   elements.sendButton.addEventListener('click', sendFiles);
@@ -227,6 +256,7 @@ async function init() {
     if (event.dataTransfer?.files?.length) {
       elements.fileInput.files = event.dataTransfer.files;
       setDisabled(elements.sendButton, !(state.session?.isReady()));
+      elements.fileInput.dispatchEvent(new Event('change'));
     }
   });
 

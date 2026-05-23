@@ -327,6 +327,25 @@ body.theme-premium {
   color: rgba(255, 255, 255, 0.45);
 }
 
+.room-code-input {
+  width: 100%;
+  min-height: 64px;
+  font-size: clamp(30px, 5vw, 42px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  text-align: center;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(158, 197, 255, 0.35);
+}
+
+.room-code-input::placeholder {
+  color: rgba(255, 255, 255, 0.32);
+  letter-spacing: 0.22em;
+}
+
 .btn {
   appearance: none;
   border: 1px solid var(--hairline);
@@ -917,5 +936,81 @@ select.input {
 @media (max-width: 480px) {
   .select-wrapper {
     max-width: 100%;
+  }
+}
+
+/* Modern send UI overrides */
+.dropzone {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  padding: clamp(20px, 6vw, 34px);
+  min-height: 170px;
+}
+
+.dropzone:hover {
+  background: linear-gradient(180deg, rgba(110, 168, 254, 0.15), rgba(255, 255, 255, 0.04));
+}
+
+.dropzone.drag-over {
+  background: linear-gradient(180deg, rgba(110, 168, 254, 0.24), rgba(255, 255, 255, 0.05));
+  transform: translateY(-1px);
+}
+
+.dz-visual {
+  gap: 16px;
+}
+
+.dz-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid rgba(158, 197, 255, 0.4);
+  background: rgba(110, 168, 254, 0.15);
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  font-weight: 600;
+  opacity: .95;
+}
+
+.dz-text {
+  display: grid;
+  gap: 8px;
+}
+
+.dz-title {
+  font-weight: 700;
+  font-size: clamp(17px, 2vw, 21px);
+}
+
+.dz-sub {
+  font-size: 14px;
+}
+
+.dz-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: #fff;
+  background: linear-gradient(90deg, #3578f6, #6ea8fe);
+  box-shadow: 0 8px 20px rgba(53, 120, 246, 0.35);
+}
+
+@media (max-width: 660px) {
+  .room-code-input {
+    min-height: 58px;
+    font-size: clamp(26px, 9vw, 36px);
+    letter-spacing: 0.16em;
+    padding: 12px 14px;
+  }
+
+  .dropzone {
+    min-height: 150px;
+    padding: 16px;
   }
 }
