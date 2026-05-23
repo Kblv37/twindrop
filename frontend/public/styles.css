@@ -576,29 +576,62 @@ select.input {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 16px;
+  margin-top: 14px;
+}
+.file-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.file-list-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.file-list-clear {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--c-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color var(--transition), background var(--transition);
+}
+.file-list-clear:hover {
+  color: var(--c-danger);
+  background: rgba(248,113,113,0.08);
 }
 .file-list-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: rgba(79,142,247,0.06);
-  border: 1px solid rgba(79,142,247,0.15);
+  background: rgba(79,142,247,0.05);
+  border: 1px solid rgba(79,142,247,0.12);
   font-size: 13px;
   color: var(--c-text);
-  animation: fileItemIn 0.18s ease;
+  animation: fileItemIn 0.16s ease;
+  transition: background var(--transition), border-color var(--transition);
+}
+.file-list-item:hover {
+  background: rgba(79,142,247,0.09);
+  border-color: rgba(79,142,247,0.22);
 }
 @keyframes fileItemIn {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .file-list-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: rgba(79,142,247,0.15);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(79,142,247,0.12);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -620,11 +653,81 @@ select.input {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+  font-size: 13px;
 }
 .file-list-size {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--c-muted);
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.file-list-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--c-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: color var(--transition), background var(--transition);
+  padding: 0;
+}
+.file-list-remove:hover {
+  color: var(--c-danger);
+  background: rgba(248,113,113,0.12);
+}
+.file-list-remove svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* ── Dropzone disabled/transferring state ── */
+.dropzone.is-transferring {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed;
+  border-color: rgba(255,255,255,0.08);
+}
+.dropzone.is-transferring .dz-cta {
+  background: rgba(79,142,247,0.3);
+  box-shadow: none;
+}
+
+/* ── Send action row ── */
+.send-action-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.send-action-row .btn-send {
+  flex: 1;
+  padding: 13px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  background: var(--c-accent);
+  border-color: transparent;
+  color: #fff;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 20px rgba(79,142,247,0.3);
+  letter-spacing: 0.01em;
+}
+.send-action-row .btn-send:hover:not(:disabled) {
+  background: var(--c-accent-hi);
+  box-shadow: 0 6px 28px rgba(79,142,247,0.45);
+}
+.send-action-row .btn-send:disabled {
+  background: rgba(79,142,247,0.25);
+  box-shadow: none;
+  opacity: 1;
+  color: rgba(255,255,255,0.4);
 }
 
 /* ── Downloads ── */
@@ -817,6 +920,17 @@ select.input {
   .dz-sub   { font-size: 12px; max-width: 220px; }
   .dz-cta   { margin-inline: auto; }
   .file-list-item { padding: 9px 12px; }
+
+  /* Send button — full width on mobile */
+  .send-action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .send-action-row .btn-send {
+    width: 100%;
+    padding: 15px 24px;
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 500px) {
@@ -825,6 +939,7 @@ select.input {
   .code.big { font-size: clamp(26px, 9vw, 38px); letter-spacing: 0.14em; }
   .dropzone { padding: 28px 16px; }
   .dz-icon { width: 50px; height: 50px; }
+  .file-list-name { font-size: 12px; }
 }
 
 /* ── Reduced motion ── */

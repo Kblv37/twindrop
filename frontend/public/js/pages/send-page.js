@@ -35,6 +35,9 @@ async function init() {
     session: null,
     keepAliveTimer: null,
     completedTransfers: new Set(),
+    // Virtual file list — since FileList is read-only we manage our own array
+    selectedFiles: [],
+    isTransferring: false,
   };
 
   const sender = new FileSender({
@@ -69,11 +72,28 @@ async function init() {
   function resetSession() {
     state.session?.destroy();
     state.session = null;
+    setTransferring(false);
     setDisabled(elements.sendButton, true);
   }
 
   function updateRoomHint(message, type = 'info') {
     showNotice(elements.roomHint, { type, message });
+  }
+
+  function updateSendButton() {
+    const canSend = state.session?.isReady() && state.selectedFiles.length > 0 && !state.isTransferring;
+    setDisabled(elements.sendButton, !canSend);
+  }
+
+  function setTransferring(active) {
+    state.isTransferring = active;
+    if (elements.dropzone) {
+      elements.dropzone.classList.toggle('is-transferring', active);
+    }
+    if (elements.fileInput) {
+      elements.fileInput.disabled = active;
+    }
+    updateSendButton();
   }
 
   function flushPendingSignals() {
@@ -121,7 +141,7 @@ async function init() {
         }
       },
       onChannelOpen: () => {
-        setDisabled(elements.sendButton, !(elements.fileInput.files?.length));
+        updateSendButton();
         showNotice(elements.status, { type: 'success', message: 'Канал открыт. Передача доступна.' });
       },
       onChannelClose: () => {
@@ -177,20 +197,34 @@ async function init() {
       showNotice(elements.status, { type: 'warning', message: 'P2P-канал ещё не готов.' });
       return;
     }
+    if (state.selectedFiles.length === 0) {
+      showNotice(elements.status, { type: 'warning', message: 'Выберите хотя бы один файл.' });
+      return;
+    }
+    if (state.isTransferring) return;
+
+    setTransferring(true);
 
     try {
       await state.session.waitForOpen();
       const chunkSize = Number(elements.chunkSizeSelect.value);
-      const files = Array.from(elements.fileInput.files || []);
+      const files = [...state.selectedFiles];
       await sender.sendFiles(files, chunkSize);
-      showNotice(elements.status, { type: 'info', message: 'Файлы отправлены в канал. Ожидаем подтверждение получения…' });
+      showNotice(elements.status, { type: 'info', message: 'Файлы отправлены. Ожидаем подтверждение получения…' });
+      // Clear list after successful send
+      state.selectedFiles = [];
+      renderFileList();
     } catch (error) {
       showNotice(elements.status, {
         type: 'error',
         message: error.message || 'Передача не удалась.',
       });
+    } finally {
+      setTransferring(false);
     }
   }
+
+  elements.sendButton.addEventListener('click', sendFiles);
 
   function startKeepAlive() {
     window.clearInterval(state.keepAliveTimer);
@@ -226,18 +260,44 @@ async function init() {
     }
   });
 
+  // ── File management ──────────────────────────────────────────
+
   function formatFileSize(bytes) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  function renderFileList(files) {
+  function renderFileList() {
     if (!elements.fileList) return;
     elements.fileList.innerHTML = '';
-    if (!files || files.length === 0) return;
 
-    files.forEach((file) => {
+    if (state.selectedFiles.length === 0) return;
+
+    // Header row
+    const header = document.createElement('div');
+    header.className = 'file-list-header';
+
+    const label = document.createElement('span');
+    label.className = 'file-list-label';
+    label.textContent = `Файлов: ${state.selectedFiles.length}`;
+
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'file-list-clear';
+    clearBtn.type = 'button';
+    clearBtn.textContent = 'Очистить всё';
+    clearBtn.addEventListener('click', () => {
+      if (state.isTransferring) return;
+      state.selectedFiles = [];
+      renderFileList();
+      updateSendButton();
+    });
+
+    header.append(label, clearBtn);
+    elements.fileList.appendChild(header);
+
+    // File rows
+    state.selectedFiles.forEach((file, index) => {
       const item = document.createElement('div');
       item.className = 'file-list-item';
 
@@ -254,29 +314,48 @@ async function init() {
       size.className = 'file-list-size';
       size.textContent = formatFileSize(file.size);
 
-      item.append(iconWrap, name, size);
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'file-list-remove';
+      removeBtn.type = 'button';
+      removeBtn.setAttribute('aria-label', `Удалить ${file.name}`);
+      removeBtn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (state.isTransferring) return;
+        state.selectedFiles.splice(index, 1);
+        renderFileList();
+        updateSendButton();
+      });
+
+      item.append(iconWrap, name, size, removeBtn);
       elements.fileList.appendChild(item);
     });
   }
 
+  function addFiles(newFiles) {
+    if (state.isTransferring) return;
+    // Merge — avoid exact duplicates by name+size
+    for (const file of newFiles) {
+      const isDupe = state.selectedFiles.some(
+        (f) => f.name === file.name && f.size === file.size,
+      );
+      if (!isDupe) {
+        state.selectedFiles.push(file);
+      }
+    }
+    renderFileList();
+    updateSendButton();
+  }
+
   elements.fileInput.addEventListener('change', () => {
     const files = Array.from(elements.fileInput.files || []);
-    setDisabled(elements.sendButton, !(state.session?.isReady() && files.length));
-    renderFileList(files);
-
-    if (!elements.dropzoneSubtext) return;
-    if (files.length === 0) {
-      elements.dropzoneSubtext.textContent = 'Поддерживаются любые форматы файлов';
-    } else if (files.length === 1) {
-      elements.dropzoneSubtext.textContent = `Выбран файл: ${files[0].name}`;
-    } else {
-      elements.dropzoneSubtext.textContent = `Выбрано файлов: ${files.length}`;
-    }
+    if (files.length > 0) addFiles(files);
+    // Reset input so same file can be re-added after removal
+    elements.fileInput.value = '';
   });
 
-  elements.sendButton.addEventListener('click', sendFiles);
-
   elements.dropzone.addEventListener('dragover', (event) => {
+    if (state.isTransferring) return;
     event.preventDefault();
     elements.dropzone.classList.add('drag-over');
   });
@@ -288,11 +367,9 @@ async function init() {
   elements.dropzone.addEventListener('drop', (event) => {
     event.preventDefault();
     elements.dropzone.classList.remove('drag-over');
-    if (event.dataTransfer?.files?.length) {
-      elements.fileInput.files = event.dataTransfer.files;
-      setDisabled(elements.sendButton, !(state.session?.isReady()));
-      elements.fileInput.dispatchEvent(new Event('change'));
-    }
+    if (state.isTransferring) return;
+    const files = Array.from(event.dataTransfer?.files || []);
+    if (files.length > 0) addFiles(files);
   });
 
   socket.on('connect', async () => {
