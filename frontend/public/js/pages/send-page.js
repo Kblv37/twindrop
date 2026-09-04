@@ -232,50 +232,12 @@ async function openQrScanner(elements, state) {
       } catch (e) {
         console.warn('BarcodeDetector error:', e);
       }
-    } else if (typeof window.QRCode !== 'undefined' && window.QRCode.toDataURL) {
-      try {
-        const ctx = canvas.getContext('2d');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        const dataUrl = canvas.toDataURL('image/png');
-        const decoded = await decodeQrFromImage(dataUrl);
-        if (decoded) {
-          const roomCode = parseQrData(decoded);
-          if (roomCode) {
-            isScanning = false;
-            elements.codeInput.value = roomCode;
-            elements.codeInput.dispatchEvent(new Event('input'));
-            cleanup();
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn('QRCode decode error:', e);
-      }
+    } else {
+      console.warn('BarcodeDetector not available. QR scanning requires Chrome/Edge.');
     }
 
     animationFrameId = requestAnimationFrame(processFrame);
   };
-
-  async function decodeQrFromImage(dataUrl) {
-    if (typeof window.QRCode !== 'function' || typeof window.QRCode.decode !== 'function') {
-      return null;
-    }
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const result = window.QRCode.decode(img);
-          resolve(result || null);
-        } catch {
-          resolve(null);
-        }
-      };
-      img.onerror = () => resolve(null);
-      img.src = dataUrl;
-    });
-  }
 
   try {
     if (typeof window.BarcodeDetector === 'function') {
@@ -337,6 +299,9 @@ async function init() {
   };
 
   const config = await loadRuntimeConfig();
+
+  const api = createApiClient(config);
+  const socket = createSocket(config);
 
   const state = {
     code: '',

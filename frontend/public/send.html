@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.socket.io https://cdnjs.cloudflare.com; connect-src 'self' https: wss:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.socket.io; connect-src 'self' https: wss:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
   <meta name="description" content="Twindrop — безопасная отправка файлов напрямую через WebRTC.">
   <title>Отправить файл | Twindrop</title>
   <link rel="icon" type="image/png" sizes="64x64" href="/images/icon64.ico">
@@ -13,7 +13,6 @@
   <link rel="stylesheet" href="/styles.css">
   <script src="/app-config.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script type="module" src="/js/pages/send-page.js"></script>
 </head>
 <body class="theme-premium">
@@ -126,7 +125,6 @@
           <div class="modal-body">
             <div id="qrScannerVideoWrap" class="qr-scanner-video-wrap">
               <video id="qrScannerVideo" playsinline></video>
-              <canvas id="qrScannerCanvas" hidden></canvas>
               <div id="qrScannerOverlay" class="qr-scanner-overlay" aria-hidden="true"></div>
             </div>
             <div id="qrScannerFallback" class="qr-scanner-fallback" hidden>
