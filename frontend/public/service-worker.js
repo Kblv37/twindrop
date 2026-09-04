@@ -1,6 +1,17 @@
 const SHARE_TARGET_DB = 'twindrop-share-target';
 const SHARE_TARGET_STORE = 'files';
 const SHARE_TARGET_KEY = 'shared-files';
+const SW_VERSION = '20260904-1';
+const CACHE_NAME = `twindrop-${SW_VERSION}`;
+const CACHE_URLS = [
+  '/',
+  '/send.html',
+  '/index.html',
+  '/manifest.json',
+  '/styles.css',
+  '/images/icon.png',
+  '/images/pwd.png',
+];
 
 async function openDB() {
   return new Promise((resolve, reject) => {
@@ -93,17 +104,6 @@ async function handleShareTargetRequest(request) {
     return Response.redirect('/send.html', 303);
   }
 }
-
-const CACHE_NAME = 'twindrop-v1';
-const CACHE_URLS = [
-  '/',
-  '/send.html',
-  '/index.html',
-  '/manifest.json',
-  '/styles.css',
-  '/images/icon.png',
-  '/images/pwd.png',
-];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

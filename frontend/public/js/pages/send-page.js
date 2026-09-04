@@ -56,16 +56,42 @@ async function clearSharedFiles() {
 function registerServiceWorker(elements, state) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-      .then(() => {
-        navigator.serviceWorker.addEventListener('message', (event) => {
-          if (event.data && event.data.type === 'SHARED_FILES_AVAILABLE') {
-            processSharedFiles(elements, state);
+      .then((registration) => {
+        // Handle case when SW is already controlling the page
+        if (navigator.serviceWorker.controller) {
+          // Already controlled, check for shared files immediately
+          processSharedFiles(elements, state);
+        }
+        
+        // Listen for controller change (new SW takes control)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          processSharedFiles(elements, state);
+        });
+        
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                processSharedFiles(elements, state);
+              }
+            });
           }
         });
       })
       .catch((error) => {
         console.warn('Service worker registration failed:', error);
       });
+    
+    // Listen for messages from SW (including SHARED_FILES_AVAILABLE)
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'SHARED_FILES_AVAILABLE') {
+        processSharedFiles(elements, state);
+      }
+    });
+  } else {
+    // Fallback: try to process shared files directly if no SW support
+    processSharedFiles(elements, state);
   }
 }
 
@@ -303,6 +329,11 @@ async function init() {
   const api = createApiClient(config);
   const socket = createSocket(config);
 
+  let socketConnected = false;
+  socket.on('connect', () => {
+    socketConnected = true;
+  });
+
   const state = {
     code: '',
     joined: false,
@@ -338,7 +369,7 @@ async function init() {
         elements.sendBar,
         elements.sendText,
         ratio,
-        `Передача: ${sanitizeText(fileName)} · ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`,
+        `${sanitizeText(fileName)} · ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`,
       );
 
       if (stage === 'complete' && transferId && !state.completedTransfers.has(transferId)) {
@@ -456,6 +487,20 @@ async function init() {
       if (!roomInfo.exists) {
         updateRoomHint('Комната не найдена.', 'warning');
         return;
+      }
+
+      // Wait for socket to be connected before joining room
+      if (!socketConnected) {
+        await new Promise((resolve) => {
+          const checkConnect = () => {
+            if (socketConnected) {
+              resolve();
+            } else {
+              setTimeout(checkConnect, 50);
+            }
+          };
+          checkConnect();
+        });
       }
 
       const response = await emitWithAck(socket, 'join-room', { code });
@@ -660,6 +705,7 @@ async function init() {
   });
 
   socket.on('connect', async () => {
+    socketConnected = true;
     showNotice(elements.status, { type: 'info', message: 'Сигнальный сервер подключён.' });
 
     if (state.joined && state.code) {
