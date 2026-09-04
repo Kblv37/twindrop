@@ -8,6 +8,21 @@ const CONTROL_TYPES = {
   ERROR: 'transfer-error',
 };
 
+function isValidSha256(value) {
+  return typeof value === 'string' && value.length === 64 && /^[0-9a-f]{64}$/i.test(value);
+}
+
+async function computeSha256(buffer) {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  const hashArray = new Uint8Array(hashBuffer);
+  return Array.from(hashArray, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function computeFileSha256(file) {
+  const buffer = await file.arrayBuffer();
+  return computeSha256(buffer);
+}
+
 function isControlMessage(value) {
   if (typeof value !== 'string') {
     return null;
@@ -110,12 +125,24 @@ export class FileSender {
     }
 
     if (controlMessage.type === CONTROL_TYPES.COMPLETE_ACK) {
+      const integrity = controlMessage.integrity === 'verified' ? 'verified' : 'unknown';
       this.onRemoteProgress?.({
         stage: 'complete',
         transferId: controlMessage.transferId,
         fileName: sanitizeFileName(controlMessage.fileName || ''),
         receivedBytes: Number(controlMessage.totalBytes) || 0,
         totalBytes: Number(controlMessage.totalBytes) || 0,
+        sha256: controlMessage.sha256,
+        integrity,
+      });
+    }
+
+    if (controlMessage.type === CONTROL_TYPES.ERROR) {
+      this.onRemoteProgress?.({
+        stage: 'error',
+        transferId: controlMessage.transferId,
+        fileName: sanitizeFileName(controlMessage.fileName || ''),
+        message: controlMessage.message || 'Передача завершилась с ошибкой.',
       });
     }
   }
@@ -136,6 +163,8 @@ export class FileSender {
       const fileName = sanitizeFileName(file.name);
       let sentBytes = 0;
 
+      const sha256 = await computeFileSha256(file);
+
       this.sendControlMessage(channel, {
         type: CONTROL_TYPES.META,
         transferId,
@@ -143,6 +172,7 @@ export class FileSender {
         fileSize: file.size,
         mimeType: file.type || 'application/octet-stream',
         chunkSize,
+        sha256,
       });
 
       try {
@@ -224,11 +254,18 @@ export class FileReceiver {
       return;
     }
 
+    const sha256 = message.sha256;
+    if (!isValidSha256(sha256)) {
+      this.failTransfer('Получены некорректные метаданные файла: отсутствует или неверный SHA-256.');
+      return;
+    }
+
     this.activeTransfer = {
       transferId: message.transferId,
       fileName,
       fileSize,
       mimeType: typeof message.mimeType === 'string' ? message.mimeType : 'application/octet-stream',
+      sha256,
       receivedBytes: 0,
       chunks: [],
       nextProgressThreshold: 256 * 1024,
@@ -241,7 +278,7 @@ export class FileReceiver {
     });
   }
 
-  finalizeTransfer(message) {
+  async finalizeTransfer(message) {
     if (!this.activeTransfer || !isValidTransferId(message.transferId) || message.transferId !== this.activeTransfer.transferId) {
       return;
     }
@@ -252,6 +289,33 @@ export class FileReceiver {
     }
 
     const blob = new Blob(this.activeTransfer.chunks, { type: this.activeTransfer.mimeType });
+
+    let receivedBuffer;
+    let receivedSha256;
+    try {
+      receivedBuffer = await blob.arrayBuffer();
+      receivedSha256 = await computeSha256(receivedBuffer);
+    } catch (error) {
+      this.activeTransfer.chunks = [];
+      this.sendControl?.({
+        type: CONTROL_TYPES.ERROR,
+        transferId: this.activeTransfer.transferId,
+        message: 'Ошибка при проверке целостности файла.',
+      });
+      this.failTransfer('Ошибка при проверке целостности файла.');
+      return;
+    }
+
+    if (receivedSha256 !== this.activeTransfer.sha256) {
+      this.activeTransfer.chunks = [];
+      this.sendControl?.({
+        type: CONTROL_TYPES.ERROR,
+        transferId: this.activeTransfer.transferId,
+        message: 'Проверка целостности не пройдена. Полученный файл отличается от исходного.',
+      });
+      this.failTransfer('Проверка целостности не пройдена. Полученный файл отличается от исходного.');
+      return;
+    }
 
     this.onTransferReady?.({
       fileName: this.activeTransfer.fileName,
@@ -265,6 +329,8 @@ export class FileReceiver {
       transferId: this.activeTransfer.transferId,
       fileName: this.activeTransfer.fileName,
       totalBytes: this.activeTransfer.fileSize,
+      sha256: this.activeTransfer.sha256,
+      integrity: 'verified',
     });
 
     this.resetActiveTransfer();
@@ -321,7 +387,10 @@ export class FileReceiver {
     }
 
     if (controlMessage?.type === CONTROL_TYPES.COMPLETE) {
-      this.finalizeTransfer(controlMessage);
+      this.finalizeTransfer(controlMessage).catch((error) => {
+        console.error('Ошибка при завершении передачи:', error);
+        this.failTransfer('Внутренняя ошибка при проверке целостности.');
+      });
       return;
     }
 

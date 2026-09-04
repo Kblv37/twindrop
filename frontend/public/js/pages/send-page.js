@@ -5,11 +5,91 @@ import { FileSender } from '../core/file-transfer.js';
 import { buildSendUrl, formatBytes, normalizeRoomCode, parseQuery, sanitizeText } from '../core/utils.js';
 import { WebRtcPeerSession } from '../core/webrtc-peer.js';
 
-async function init() {
-  const config = await loadRuntimeConfig();
-  const api = createApiClient(config);
-  const socket = createSocket(config);
+const SHARE_TARGET_DB = 'twindrop-share-target';
+const SHARE_TARGET_STORE = 'files';
+const SHARE_TARGET_KEY = 'shared-files';
 
+async function openShareDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(SHARE_TARGET_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(SHARE_TARGET_STORE)) {
+        db.createObjectStore(SHARE_TARGET_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getSharedFiles() {
+  const db = await openShareDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(SHARE_TARGET_STORE, 'readonly');
+    const store = transaction.objectStore(SHARE_TARGET_STORE);
+    const request = store.get(SHARE_TARGET_KEY);
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function clearSharedFiles() {
+  const db = await openShareDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(SHARE_TARGET_STORE, 'readwrite');
+    const store = transaction.objectStore(SHARE_TARGET_STORE);
+    const request = store.delete(SHARE_TARGET_KEY);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function registerServiceWorker(elements) {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+      .then(() => {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'SHARED_FILES_AVAILABLE') {
+            processSharedFiles(elements);
+          }
+        });
+      })
+      .catch((error) => {
+        console.warn('Service worker registration failed:', error);
+      });
+  }
+}
+
+async function getAndConvertSharedFiles() {
+  try {
+    const sharedFiles = await getSharedFiles();
+    if (sharedFiles.length > 0) {
+      const files = sharedFiles.map((f) => new File([f.data], f.name, {
+        type: f.type,
+        lastModified: f.lastModified,
+      }));
+      return files;
+    }
+  } catch (error) {
+    console.warn('Failed to load shared files:', error);
+  }
+  return [];
+}
+
+async function processSharedFiles(elements) {
+  const files = await getAndConvertSharedFiles();
+  if (files.length > 0) {
+    try {
+      addFiles(files);
+      showNotice(elements.status, { type: 'info', message: `Файлы добавлены из меню «Поделиться»` });
+    } finally {
+      await clearSharedFiles();
+    }
+  }
+}
+
+async function init() {
   const elements = {
     codeInput: $('#codeInput'),
     roomHint: $('#roomHint'),
@@ -26,6 +106,8 @@ async function init() {
     dropzoneSubtext: document.querySelector('#dropzone .dz-sub'),
     fileList: $('#fileList'),
   };
+
+  registerServiceWorker(elements);
 
   const state = {
     code: '',
@@ -53,7 +135,7 @@ async function init() {
         `${sanitizeText(fileName)} · ${formatBytes(sentBytes)} / ${formatBytes(totalBytes)}`,
       );
     },
-    onRemoteProgress: ({ stage, transferId, fileName, receivedBytes, totalBytes }) => {
+    onRemoteProgress: ({ stage, transferId, fileName, receivedBytes, totalBytes, sha256, integrity, message }) => {
       const ratio = totalBytes > 0 ? receivedBytes / totalBytes : 0;
       setProgress(
         elements.sendBar,
@@ -64,10 +146,17 @@ async function init() {
 
       if (stage === 'complete' && transferId && !state.completedTransfers.has(transferId)) {
         state.completedTransfers.add(transferId);
-        showNotice(elements.status, { type: 'success', message: `Получатель подтвердил файл: ${sanitizeText(fileName)}.` });
+        const integrityMsg = integrity === 'verified' ? ' ✓ Целостность проверена' : '';
+        showNotice(elements.status, { type: 'success', message: `Получатель подтвердил файл: ${sanitizeText(fileName)}.${integrityMsg}` });
+      }
+
+      if (stage === 'error' && transferId) {
+        showNotice(elements.status, { type: 'error', message: `Передача завершена с ошибкой: ${sanitizeText(message || 'проверка целостности не пройдена')}.` });
       }
     },
   });
+
+  await processSharedFiles(elements);
 
   function resetSession() {
     state.session?.destroy();

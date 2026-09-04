@@ -54,7 +54,7 @@ async function init() {
           href,
         }),
       );
-      showNotice(elements.status, { type: 'success', message: `Файл ${fileName} готов к скачиванию.` });
+      showNotice(elements.status, { type: 'success', message: `Файл ${fileName} готов к скачиванию. ✓ Целостность проверена` });
     },
     onError: (error) => {
       showNotice(elements.status, { type: 'error', message: error.message || 'Передача завершилась с ошибкой.' });
