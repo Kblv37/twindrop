@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.socket.io; connect-src 'self' https: wss:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta name="description" content="Twindrop — безопасная P2P-передача файлов прямо в браузере.">
+  <title>Получить файл | Twindrop</title>
+  <link rel="icon" type="image/png" sizes="64x64" href="/images/icon64.ico">
+  <link rel="icon" type="image/png" sizes="100x100" href="/images/icon.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="/images/pwd.png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app-config.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script type="module" src="/js/pages/receive-page.js"></script>
+</head>
+<body class="theme-premium">
+  <div class="bg">
+    <div class="bg-gradient"></div>
+    <div class="bg-vignette"></div>
+    <div class="bg-noise" aria-hidden="true"></div>
+  </div>
+
+  <header class="app-header" role="banner" aria-label="Навигация Twindrop">
+    <div class="header-inner container">
+      <h1><a class="brand" href="/">Twindrop</a></h1>
+      <nav class="nav" aria-label="Основная навигация">
+        <a class="nav-link" href="/">Получить</a>
+        <a class="nav-link" href="/send.html">Отправить</a>
+        <a class="nav-link" href="/about.html">О проекте</a>
+      </nav>
+    </div>
+    <div class="hairline"></div>
+  </header>
+
+  <main class="app-main container" role="main">
+    <div class="wrap">
+      <h1 class="page-title">Получить файл</h1>
+
+      <section class="section glass card-receive" aria-labelledby="receive-room-title">
+        <h2 id="receive-room-title" class="section-title">Комната для приёма</h2>
+        <div class="row code-qr-row">
+          <div class="code-col">
+            <div class="label muted">Код комнаты</div>
+            <div id="code" class="code mono big">••••••</div>
+            <div class="row">
+              <button id="copyCode" class="btn gloss">Скопировать код</button>
+            </div>
+            <label class="field-group">
+              <span class="small muted">Ссылка для отправителя</span>
+              <input id="sendLink" class="input mono" readonly>
+            </label>
+          </div>
+
+          <div class="qr-col">
+            <div class="small muted">Отправитель может ввести код вручную или открыть QR.</div>
+            <div id="qr" class="qr" aria-label="QR-код для подключения"></div>
+          </div>
+        </div>
+      </section>
+
+      <div id="status" class="section notice" style="display:none" role="status" aria-live="polite"></div>
+
+      <section class="section glass" aria-labelledby="download-title">
+        <h2 id="download-title" class="section-title">Приём файла</h2>
+        <div class="progress-wrap">
+          <div class="progress" aria-label="Ход получения файла">
+            <div id="recvBar" class="bar"></div>
+          </div>
+          <div id="recvText" class="small muted">Ожидаем подключение отправителя…</div>
+        </div>
+        <div id="downloads" class="downloads"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="app-footer" role="contentinfo">
+    <div class="container footer-inner">
+      <span class="muted small">P2P-передача без хранения файлов на сервере.</span>
+    </div>
+  </footer>
+</body>
+</html>
