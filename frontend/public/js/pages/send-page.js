@@ -107,6 +107,27 @@ async function init() {
     fileList: $('#fileList'),
   };
 
+  const config = await loadRuntimeConfig();
+
+  registerServiceWorker(elements);
+
+  const state = {
+    codeInput: $('#codeInput'),
+    roomHint: $('#roomHint'),
+    joinButton: $('#joinBtn'),
+    fileInput: $('#fileInput'),
+    dropzone: $('#dropzone'),
+    sendButton: $('#sendBtn'),
+    status: $('#status'),
+    sendBar: $('#sendBar'),
+    sendText: $('#sendText'),
+    sendPanel: $('#sendPanel'),
+    chunkSizeSelect: $('#chunkSize'),
+    shareLink: $('#shareLink'),
+    dropzoneSubtext: document.querySelector('#dropzone .dz-sub'),
+    fileList: $('#fileList'),
+  };
+
   registerServiceWorker(elements);
 
   const state = {
