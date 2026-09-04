@@ -9,6 +9,7 @@ const SHARE_TARGET_DB = 'twindrop-share-target';
 const SHARE_TARGET_STORE = 'files';
 const SHARE_TARGET_KEY = 'shared-files';
 
+// QR Scanner constants
 const QR_SCANNER_CONSTANTS = {
   SUPPORTED_MIME_TYPES: ['image/png', 'image/jpeg'],
   MIN_QR_SIZE: 128,
@@ -52,13 +53,13 @@ async function clearSharedFiles() {
   });
 }
 
-function registerServiceWorker(elements) {
+function registerServiceWorker(elements, state) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
       .then(() => {
         navigator.serviceWorker.addEventListener('message', (event) => {
           if (event.data && event.data.type === 'SHARED_FILES_AVAILABLE') {
-            processSharedFiles(elements);
+            processSharedFiles(elements, state);
           }
         });
       })
@@ -84,16 +85,203 @@ async function getAndConvertSharedFiles() {
   return [];
 }
 
-async function processSharedFiles(elements) {
+async function processSharedFiles(elements, state) {
   const files = await getAndConvertSharedFiles();
   if (files.length > 0) {
-    try {
-      addFiles(files);
+    const beforeCount = elements.fileList ? Array.from(elements.fileList.querySelectorAll('.file-list-item')).length : 0;
+    addFiles(files);
+    const afterCount = elements.fileList ? Array.from(elements.fileList.querySelectorAll('.file-list-item')).length : 0;
+    if (afterCount > beforeCount) {
       showNotice(elements.status, { type: 'info', message: `Файлы добавлены из меню «Поделиться»` });
-    } finally {
       await clearSharedFiles();
+    } else if (state.isTransferring) {
+      showNotice(elements.status, { type: 'warning', message: 'Передача в процессе, файлы будут добавлены после завершения' });
     }
   }
+}
+
+function parseQrData(rawData) {
+  if (!rawData || typeof rawData !== 'string') {
+    return null;
+  }
+  const trimmed = rawData.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (/^\d{6}$/.test(trimmed)) {
+    return trimmed;
+  }
+  try {
+    const url = new URL(trimmed);
+    const roomParam = url.searchParams.get('room');
+    if (roomParam && /^\d{6}$/.test(roomParam)) {
+      return roomParam;
+    }
+    if (url.pathname === '/send.html' || url.pathname === '/send') {
+      const roomParam2 = url.searchParams.get('room');
+      if (roomParam2 && /^\d{6}$/.test(roomParam2)) {
+        return roomParam2;
+      }
+    }
+  } catch {
+  }
+  return null;
+}
+
+async function openQrScanner(elements, state) {
+  const modal = $('#qrScannerModal');
+  const video = $('#qrScannerVideo');
+  const canvas = $('#qrScannerCanvas');
+  const closeBtn = $('#qrScannerClose');
+  const errorEl = $('#qrScannerError');
+  const fallback = $('#qrScannerFallback');
+  const videoWrap = $('#qrScannerVideoWrap');
+  const overlay = $('#qrScannerOverlay');
+
+  if (!modal || !video || !canvas || !closeBtn) {
+    showNotice(elements.status, { type: 'error', message: 'QR сканер недоступен' });
+    return;
+  }
+
+  errorEl.style.display = 'none';
+  fallback.hidden = true;
+  videoWrap.hidden = false;
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+
+  let barcodeDetector = null;
+  let animationFrameId = null;
+  let stream = null;
+  let isScanning = true;
+
+  const cleanup = () => {
+    isScanning = false;
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      stream = null;
+    }
+    video.srcObject = null;
+    modal.hidden = true;
+    document.body.style.overflow = '';
+  };
+
+  const showError = (message) => {
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+    videoWrap.hidden = true;
+    fallback.hidden = false;
+  };
+
+  const processFrame = async () => {
+    if (!isScanning || video.readyState < 2) {
+      animationFrameId = requestAnimationFrame(processFrame);
+      return;
+    }
+
+    if (typeof window.BarcodeDetector === 'function' && barcodeDetector) {
+      try {
+        const barcodes = await barcodeDetector.detect(video);
+        for (const barcode of barcodes) {
+          if (barcode.rawValue) {
+            const roomCode = parseQrData(barcode.rawValue);
+            if (roomCode) {
+              isScanning = false;
+              elements.codeInput.value = roomCode;
+              elements.codeInput.dispatchEvent(new Event('input'));
+              cleanup();
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('BarcodeDetector error:', e);
+      }
+    } else if (typeof window.QRCode !== 'undefined' && window.QRCode.toDataURL) {
+      try {
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const dataUrl = canvas.toDataURL('image/png');
+        const decoded = await decodeQrFromImage(dataUrl);
+        if (decoded) {
+          const roomCode = parseQrData(decoded);
+          if (roomCode) {
+            isScanning = false;
+            elements.codeInput.value = roomCode;
+            elements.codeInput.dispatchEvent(new Event('input'));
+            cleanup();
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('QRCode decode error:', e);
+      }
+    }
+
+    animationFrameId = requestAnimationFrame(processFrame);
+  };
+
+  async function decodeQrFromImage(dataUrl) {
+    if (typeof window.QRCode !== 'function' || typeof window.QRCode.decode !== 'function') {
+      return null;
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const result = window.QRCode.decode(img);
+          resolve(result || null);
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    });
+  }
+
+  try {
+    if (typeof window.BarcodeDetector === 'function') {
+      barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    }
+  } catch {
+    barcodeDetector = null;
+  }
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+    });
+    video.srcObject = stream;
+    await video.play();
+    animationFrameId = requestAnimationFrame(processFrame);
+  } catch (error) {
+    console.error('Camera access error:', error);
+    showError('Не удалось получить доступ к камере. Разрешите доступ или введите код вручную.');
+    return;
+  }
+
+  closeBtn.addEventListener('click', cleanup, { once: true });
+  modal.querySelector('.modal-backdrop').addEventListener('click', cleanup, { once: true });
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      cleanup();
+      document.removeEventListener('keydown', handleKeyDown);
+    }
+  };
+  document.addEventListener('keydown', handleKeyDown);
+
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      cleanup();
+    }
+  });
 }
 
 async function init() {
@@ -101,6 +289,7 @@ async function init() {
     codeInput: $('#codeInput'),
     roomHint: $('#roomHint'),
     joinButton: $('#joinBtn'),
+    scanQrButton: $('#scanQrBtn'),
     fileInput: $('#fileInput'),
     dropzone: $('#dropzone'),
     sendButton: $('#sendBtn'),
@@ -116,27 +305,6 @@ async function init() {
 
   const config = await loadRuntimeConfig();
 
-  registerServiceWorker(elements);
-
-  const state = {
-    codeInput: $('#codeInput'),
-    roomHint: $('#roomHint'),
-    joinButton: $('#joinBtn'),
-    fileInput: $('#fileInput'),
-    dropzone: $('#dropzone'),
-    sendButton: $('#sendBtn'),
-    status: $('#status'),
-    sendBar: $('#sendBar'),
-    sendText: $('#sendText'),
-    sendPanel: $('#sendPanel'),
-    chunkSizeSelect: $('#chunkSize'),
-    shareLink: $('#shareLink'),
-    dropzoneSubtext: document.querySelector('#dropzone .dz-sub'),
-    fileList: $('#fileList'),
-  };
-
-  registerServiceWorker(elements);
-
   const state = {
     code: '',
     joined: false,
@@ -149,6 +317,8 @@ async function init() {
     selectedFiles: [],
     isTransferring: false,
   };
+
+  registerServiceWorker(elements, state);
 
   const sender = new FileSender({
     getChannel: () => state.session?.getDataChannel(),
@@ -184,7 +354,7 @@ async function init() {
     },
   });
 
-  await processSharedFiles(elements);
+  await processSharedFiles(elements, state);
 
   function resetSession() {
     state.session?.destroy();
@@ -371,6 +541,7 @@ async function init() {
   });
 
   elements.joinButton.addEventListener('click', joinRoom);
+  elements.scanQrButton?.addEventListener('click', () => openQrScanner(elements, state));
   elements.codeInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !elements.joinButton.disabled) {
       joinRoom();
