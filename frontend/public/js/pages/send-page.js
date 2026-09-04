@@ -9,6 +9,13 @@ const SHARE_TARGET_DB = 'twindrop-share-target';
 const SHARE_TARGET_STORE = 'files';
 const SHARE_TARGET_KEY = 'shared-files';
 
+const QR_SCANNER_CONSTANTS = {
+  SUPPORTED_MIME_TYPES: ['image/png', 'image/jpeg'],
+  MIN_QR_SIZE: 128,
+  MAX_QR_SIZE: 1024,
+  FINDER_PATTERN_SIZE: 7,
+};
+
 async function openShareDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(SHARE_TARGET_DB, 1);
