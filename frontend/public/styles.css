@@ -960,6 +960,9 @@ select.input {
   justify-content: center;
   padding: 24px;
 }
+.modal[hidden] {
+  display: none !important;
+}
 .modal-backdrop {
   position: absolute;
   inset: 0;
