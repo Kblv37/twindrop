@@ -128,6 +128,32 @@ function parseQrData(rawData) {
   return null;
 }
 
+function isPwaMode() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true ||
+         document.referrer.includes('android-app://');
+}
+
+function getCameraErrorMessage(error) {
+  if (!error) return 'Неизвестная ошибка камеры';
+  switch (error.name) {
+    case 'NotAllowedError':
+      return 'Доступ к камере запрещён. Разрешите доступ в настройках браузера или введите код вручную.';
+    case 'NotFoundError':
+      return 'Камера не найдена. Убедитесь, что устройство имеет камеру.';
+    case 'NotReadableError':
+      return 'Камера занята другим приложением. Закройте другие приложения, использующие камеру.';
+    case 'OverconstrainedError':
+      return 'Не удалось настроить камеру. Попробуйте ввести код вручную.';
+    case 'SecurityError':
+      return 'Доступ к камере запрещён политикой безопасности. Требуется HTTPS.';
+    case 'AbortError':
+      return 'Запуск камеры был прерван.';
+    default:
+      return `Ошибка камеры: ${error.message || error.name}. Введите код вручную.`;
+  }
+}
+
 async function openQrScanner(elements, state) {
   const modal = $('#qrScannerModal');
   const video = $('#qrScannerVideo');
@@ -143,6 +169,11 @@ async function openQrScanner(elements, state) {
     return;
   }
 
+  if (state.isScanningQr) {
+    return;
+  }
+  state.isScanningQr = true;
+
   errorEl.style.display = 'none';
   fallback.hidden = true;
   videoWrap.hidden = false;
@@ -156,6 +187,7 @@ async function openQrScanner(elements, state) {
 
   const cleanup = () => {
     isScanning = false;
+    state.isScanningQr = false;
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId);
       animationFrameId = null;
@@ -262,12 +294,13 @@ async function openQrScanner(elements, state) {
     animationFrameId = requestAnimationFrame(processFrame);
   } catch (error) {
     console.error('Camera access error:', error);
-    showError('Не удалось получить доступ к камере. Разрешите доступ или введите код вручную.');
+    showError(getCameraErrorMessage(error));
+    cleanup();
     return;
   }
 
-  closeBtn.addEventListener('click', cleanup, { once: true });
-  modal.querySelector('.modal-backdrop').addEventListener('click', cleanup, { once: true });
+  closeBtn.addEventListener('click', cleanup);
+  modal.querySelector('.modal-backdrop').addEventListener('click', cleanup);
 
   const handleKeyDown = (event) => {
     if (event.key === 'Escape') {
@@ -316,6 +349,7 @@ async function init() {
     // Virtual file list — since FileList is read-only we manage our own array
     selectedFiles: [],
     isTransferring: false,
+    isScanningQr: false,
   };
 
   registerServiceWorker(elements, state);
