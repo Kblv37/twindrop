@@ -16,8 +16,11 @@ async function init() {
     downloads: $('#downloads'),
     copyButton: $('#copyCode'),
     shareButton: $('#shareLinkBtn'),
+    copyLinkButton: $('#copyLink'),
+    copyLinkStatus: $('#copyLinkStatus'),
     recvBar: $('#recvBar'),
     recvText: $('#recvText'),
+    recvProgress: $('#recvProgress'),
     qr: $('#qr'),
     sendLink: $('#sendLink'),
   };
@@ -31,6 +34,8 @@ async function init() {
     keepAliveTimer: null,
   };
 
+  let copyFeedbackTimer = null;
+
   const receiver = new FileReceiver({
     sendControl: (payload) => {
       try {
@@ -40,6 +45,10 @@ async function init() {
     maxFileSizeBytes: config.maxFileSizeBytes,
     onProgress: ({ fileName, receivedBytes, totalBytes }) => {
       const ratio = totalBytes > 0 ? receivedBytes / totalBytes : 0;
+      setProgressVisible(true);
+      if (elements.recvProgress) {
+        elements.recvProgress.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+      }
       setProgress(
         elements.recvBar,
         elements.recvText,
@@ -55,12 +64,28 @@ async function init() {
           href,
         }),
       );
+      resetReceiveProgress('Файл готов к скачиванию.');
       showNotice(elements.status, { type: 'success', message: `Файл ${fileName} готов к скачиванию. ✓ Целостность проверена` });
     },
     onError: (error) => {
+      resetReceiveProgress('Передача завершилась с ошибкой.');
       showNotice(elements.status, { type: 'error', message: error.message || 'Передача завершилась с ошибкой.' });
     },
   });
+
+  function setProgressVisible(visible) {
+    if (elements.recvProgress) {
+      elements.recvProgress.hidden = !visible;
+    }
+  }
+
+  function resetReceiveProgress(text = 'Передача ещё не началась.') {
+    setProgressVisible(false);
+    if (elements.recvProgress) {
+      elements.recvProgress.setAttribute('aria-valuenow', '0');
+    }
+    setProgress(elements.recvBar, elements.recvText, 0, text);
+  }
 
   function destroySession() {
     state.session?.destroy();
@@ -193,6 +218,45 @@ async function init() {
     }
   });
 
+  function showCopyFeedback() {
+    if (!elements.copyLinkButton) {
+      return;
+    }
+
+    const label = elements.copyLinkButton.querySelector('.copy-link-label');
+    elements.copyLinkButton.classList.add('is-copied');
+    elements.copyLinkButton.setAttribute('aria-label', 'Ссылка скопирована');
+    if (label) {
+      label.textContent = 'Скопировано';
+    }
+    if (elements.copyLinkStatus) {
+      elements.copyLinkStatus.textContent = 'Ссылка скопирована.';
+    }
+
+    window.clearTimeout(copyFeedbackTimer);
+    copyFeedbackTimer = window.setTimeout(() => {
+      elements.copyLinkButton.classList.remove('is-copied');
+      elements.copyLinkButton.setAttribute('aria-label', 'Скопировать ссылку на комнату');
+      if (label) {
+        label.textContent = 'Копировать';
+      }
+      if (elements.copyLinkStatus) {
+        elements.copyLinkStatus.textContent = '';
+      }
+    }, 2000);
+  }
+
+  elements.copyLinkButton?.addEventListener('click', async () => {
+    const link = elements.sendLink.value || buildSendUrl(config.frontendUrl, state.code);
+
+    try {
+      await navigator.clipboard.writeText(link);
+      showCopyFeedback();
+    } catch {
+      showNotice(elements.status, { type: 'warning', message: 'Не удалось скопировать ссылку автоматически.' });
+    }
+  });
+
   socket.on('connect', async () => {
     try {
       await joinRoom();
@@ -214,7 +278,7 @@ async function init() {
   socket.on('peer-left', () => {
     destroySession();
     state.peerId = '';
-    setProgress(elements.recvBar, elements.recvText, 0, 'Отправитель отключился. Можно ждать новое подключение.');
+    resetReceiveProgress('Отправитель отключился. Можно ждать новое подключение.');
     showNotice(elements.status, { type: 'warning', message: 'Отправитель вышел из комнаты.' });
   });
 

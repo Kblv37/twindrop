@@ -2,7 +2,7 @@ import { createApiClient, createSocket, emitWithAck } from '../core/api.js';
 import { loadRuntimeConfig } from '../core/config.js';
 import { $, setDisabled, setProgress, showNotice } from '../core/dom.js';
 import { FileSender } from '../core/file-transfer.js';
-import { buildSendUrl, formatBytes, getRoomCodeFromQuery, normalizeRoomCode, parseQuery, sanitizeText } from '../core/utils.js';
+import { formatBytes, getRoomCodeFromQuery, normalizeRoomCode, parseQuery, sanitizeText } from '../core/utils.js';
 import { WebRtcPeerSession } from '../core/webrtc-peer.js';
 
 const SHARE_TARGET_DB = 'twindrop-share-target';
@@ -135,9 +135,9 @@ async function init() {
     status: $('#status'),
     sendBar: $('#sendBar'),
     sendText: $('#sendText'),
+    sendProgress: $('#sendProgress'),
     sendPanel: $('#sendPanel'),
     chunkSizeSelect: $('#chunkSize'),
-    shareLink: $('#shareLink'),
     dropzoneSubtext: document.querySelector('#dropzone .dz-sub'),
     fileList: $('#fileList'),
   };
@@ -172,7 +172,14 @@ async function init() {
     maxFileSizeBytes: config.maxFileSizeBytes,
     maxFilesPerTransfer: config.maxFilesPerTransfer,
     onProgress: ({ fileName, sentBytes, totalBytes }) => {
+      if (!state.isTransferring) {
+        return;
+      }
       const ratio = totalBytes > 0 ? sentBytes / totalBytes : 0;
+      setProgressVisible(true);
+      if (elements.sendProgress) {
+        elements.sendProgress.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+      }
       setProgress(
         elements.sendBar,
         elements.sendText,
@@ -181,13 +188,19 @@ async function init() {
       );
     },
     onRemoteProgress: ({ stage, transferId, fileName, receivedBytes, totalBytes, sha256, integrity, message }) => {
-      const ratio = totalBytes > 0 ? receivedBytes / totalBytes : 0;
-      setProgress(
-        elements.sendBar,
-        elements.sendText,
-        ratio,
-        `${sanitizeText(fileName)} · ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`,
-      );
+      if (state.isTransferring) {
+        const ratio = totalBytes > 0 ? receivedBytes / totalBytes : 0;
+        setProgressVisible(true);
+        if (elements.sendProgress) {
+          elements.sendProgress.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+        }
+        setProgress(
+          elements.sendBar,
+          elements.sendText,
+          ratio,
+          `${sanitizeText(fileName)} · ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`,
+        );
+      }
 
       if (stage === 'complete' && transferId && !state.completedTransfers.has(transferId)) {
         state.completedTransfers.add(transferId);
@@ -217,6 +230,20 @@ async function init() {
   function updateSendButton() {
     const canSend = state.session?.isReady() && state.selectedFiles.length > 0 && !state.isTransferring;
     setDisabled(elements.sendButton, !canSend);
+  }
+
+  function setProgressVisible(visible) {
+    if (elements.sendProgress) {
+      elements.sendProgress.hidden = !visible;
+    }
+  }
+
+  function resetTransferProgress(text = 'Передача ещё не началась.') {
+    setProgressVisible(false);
+    if (elements.sendProgress) {
+      elements.sendProgress.setAttribute('aria-valuenow', '0');
+    }
+    setProgress(elements.sendBar, elements.sendText, 0, text);
   }
 
   function setTransferring(active) {
@@ -324,7 +351,6 @@ async function init() {
       state.code = code;
       state.joined = true;
       state.peerId = response.room.peerIds[0] || '';
-      elements.shareLink.value = buildSendUrl(config.frontendUrl, code);
       elements.sendPanel.hidden = false;
       setDisabled(elements.joinButton, true);
       updateRoomHint(`Комната ${code} готова. Ждём получателя.`, 'success');
@@ -352,9 +378,13 @@ async function init() {
     if (state.isTransferring) return;
 
     setTransferring(true);
+    resetTransferProgress('Подготовка к передаче…');
 
     try {
       await state.session.waitForOpen();
+      setProgress(elements.sendBar, elements.sendText, 0, 'Передача начинается…');
+      setProgressVisible(true);
+
       const chunkSize = Number(elements.chunkSizeSelect.value);
       const files = [...state.selectedFiles];
       await sender.sendFiles(files, chunkSize);
@@ -362,12 +392,15 @@ async function init() {
       // Clear list after successful send
       state.selectedFiles = [];
       renderFileList();
+      resetTransferProgress('Передача завершена.');
     } catch (error) {
+      resetTransferProgress('Передача не удалась.');
       showNotice(elements.status, {
         type: 'error',
         message: error.message || 'Передача не удалась.',
       });
     } finally {
+      setProgressVisible(false);
       setTransferring(false);
     }
   }
@@ -549,7 +582,7 @@ async function init() {
   socket.on('peer-left', () => {
     resetSession();
     state.peerId = '';
-    setProgress(elements.sendBar, elements.sendText, 0, 'Получатель отключился.');
+    resetTransferProgress('Получатель отключился.');
     showNotice(elements.status, { type: 'warning', message: 'Получатель вышел из комнаты.' });
   });
 
@@ -604,8 +637,6 @@ async function init() {
     }
     elements.chunkSizeSelect.appendChild(option);
   });
-
-  elements.shareLink.value = buildSendUrl(config.frontendUrl, prefilledRoom || '000000');
 
   if (prefilledRoom) {
     elements.codeInput.value = prefilledRoom;
