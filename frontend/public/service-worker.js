@@ -1,12 +1,14 @@
 const SHARE_TARGET_DB = 'twindrop-share-target';
 const SHARE_TARGET_STORE = 'files';
 const SHARE_TARGET_KEY = 'shared-files';
-const SW_VERSION = '20260904-1';
+const SW_VERSION = '20261023-2';
 const CACHE_NAME = `twindrop-${SW_VERSION}`;
+const SEND_PAGE_PATHS = new Set(['/s', '/send', '/send.html']);
 const CACHE_URLS = [
   '/',
-  '/send.html',
-  '/index.html',
+  '/s',
+  '/send',
+  '/receive',
   '/manifest.json',
   '/styles.css',
   '/images/icon.png',
@@ -60,16 +62,33 @@ async function clearSharedFiles() {
   });
 }
 
+function isSendPagePath(pathname) {
+  return SEND_PAGE_PATHS.has(pathname);
+}
+
 function isShareTargetRequest(request) {
   const url = new URL(request.url);
-  return request.method === 'POST' && url.pathname === '/send.html';
+  return request.method === 'POST' && isSendPagePath(url.pathname);
+}
+
+function shouldBypassCache(request) {
+  const url = new URL(request.url);
+  return url.pathname === '/app-config.js'
+    || url.pathname === '/api'
+    || url.pathname.startsWith('/api/')
+    || url.pathname === '/socket.io'
+    || url.pathname.startsWith('/socket.io/');
 }
 
 async function notifyClientsOfSharedFiles() {
   const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (const client of clients) {
-    if (client.url.includes('/send.html')) {
-      client.postMessage({ type: 'SHARED_FILES_AVAILABLE' });
+    try {
+      if (isSendPagePath(new URL(client.url).pathname)) {
+        client.postMessage({ type: 'SHARED_FILES_AVAILABLE' });
+      }
+    } catch {
+      // Ignore clients with malformed URLs.
     }
   }
 }
@@ -98,16 +117,24 @@ async function handleShareTargetRequest(request) {
       await notifyClientsOfSharedFiles();
     }
 
-    return Response.redirect('/send.html', 303);
+    return Response.redirect(new URL('/s', self.location.origin).href, 303);
   } catch (error) {
     console.error('Share target error:', error);
-    return Response.redirect('/send.html', 303);
+    return Response.redirect(new URL('/s', self.location.origin).href, 303);
   }
 }
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CACHE_URLS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        CACHE_URLS.map((url) =>
+          cache.add(url).catch((error) => {
+            console.warn(`Failed to precache ${url}:`, error);
+          })
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -134,6 +161,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.method !== 'GET') {
+    return;
+  }
+
+  if (shouldBypassCache(request)) {
     return;
   }
 

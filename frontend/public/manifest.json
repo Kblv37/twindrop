@@ -1,7 +1,9 @@
 {
   "name": "Twindrop",
   "short_name": "Twindrop",
-  "start_url": "./index.html",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#080c14",
   "theme_color": "#080c14",
@@ -20,7 +22,7 @@
     }
   ],
   "share_target": {
-    "action": "/send.html",
+    "action": "/s",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {

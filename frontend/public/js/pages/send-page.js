@@ -2,20 +2,12 @@ import { createApiClient, createSocket, emitWithAck } from '../core/api.js';
 import { loadRuntimeConfig } from '../core/config.js';
 import { $, setDisabled, setProgress, showNotice } from '../core/dom.js';
 import { FileSender } from '../core/file-transfer.js';
-import { buildSendUrl, formatBytes, normalizeRoomCode, parseQuery, sanitizeText } from '../core/utils.js';
+import { buildSendUrl, formatBytes, getRoomCodeFromQuery, normalizeRoomCode, parseQuery, sanitizeText } from '../core/utils.js';
 import { WebRtcPeerSession } from '../core/webrtc-peer.js';
 
 const SHARE_TARGET_DB = 'twindrop-share-target';
 const SHARE_TARGET_STORE = 'files';
 const SHARE_TARGET_KEY = 'shared-files';
-
-// QR Scanner constants
-const QR_SCANNER_CONSTANTS = {
-  SUPPORTED_MIME_TYPES: ['image/png', 'image/jpeg'],
-  MIN_QR_SIZE: 128,
-  MAX_QR_SIZE: 1024,
-  FINDER_PATTERN_SIZE: 7,
-};
 
 async function openShareDB() {
   return new Promise((resolve, reject) => {
@@ -53,19 +45,19 @@ async function clearSharedFiles() {
   });
 }
 
-function registerServiceWorker(elements, state) {
+function registerServiceWorker(elements, state, addFiles) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
       .then((registration) => {
         // Handle case when SW is already controlling the page
         if (navigator.serviceWorker.controller) {
           // Already controlled, check for shared files immediately
-          processSharedFiles(elements, state);
+          processSharedFiles(elements, state, addFiles);
         }
         
         // Listen for controller change (new SW takes control)
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-          processSharedFiles(elements, state);
+          processSharedFiles(elements, state, addFiles);
         });
         
         registration.addEventListener('updatefound', () => {
@@ -73,7 +65,7 @@ function registerServiceWorker(elements, state) {
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-                processSharedFiles(elements, state);
+                processSharedFiles(elements, state, addFiles);
               }
             });
           }
@@ -86,12 +78,12 @@ function registerServiceWorker(elements, state) {
     // Listen for messages from SW (including SHARED_FILES_AVAILABLE)
     navigator.serviceWorker.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'SHARED_FILES_AVAILABLE') {
-        processSharedFiles(elements, state);
+        processSharedFiles(elements, state, addFiles);
       }
     });
   } else {
     // Fallback: try to process shared files directly if no SW support
-    processSharedFiles(elements, state);
+    processSharedFiles(elements, state, addFiles);
   }
 }
 
@@ -111,7 +103,7 @@ async function getAndConvertSharedFiles() {
   return [];
 }
 
-async function processSharedFiles(elements, state) {
+async function processSharedFiles(elements, state, addFiles) {
   const files = await getAndConvertSharedFiles();
   if (files.length > 0) {
     const beforeCount = elements.fileList ? Array.from(elements.fileList.querySelectorAll('.file-list-item')).length : 0;
@@ -126,183 +118,10 @@ async function processSharedFiles(elements, state) {
   }
 }
 
-function parseQrData(rawData) {
-  if (!rawData || typeof rawData !== 'string') {
-    return null;
-  }
-  const trimmed = rawData.trim();
-  if (!trimmed) {
-    return null;
-  }
-  if (/^\d{6}$/.test(trimmed)) {
-    return trimmed;
-  }
-  try {
-    const url = new URL(trimmed);
-    const roomParam = url.searchParams.get('room');
-    if (roomParam && /^\d{6}$/.test(roomParam)) {
-      return roomParam;
-    }
-    if (url.pathname === '/send.html' || url.pathname === '/send') {
-      const roomParam2 = url.searchParams.get('room');
-      if (roomParam2 && /^\d{6}$/.test(roomParam2)) {
-        return roomParam2;
-      }
-    }
-  } catch {
-  }
-  return null;
-}
-
 function isPwaMode() {
   return window.matchMedia('(display-mode: standalone)').matches ||
          window.navigator.standalone === true ||
          document.referrer.includes('android-app://');
-}
-
-function getCameraErrorMessage(error) {
-  if (!error) return 'Неизвестная ошибка камеры';
-  switch (error.name) {
-    case 'NotAllowedError':
-      return 'Доступ к камере запрещён. Разрешите доступ в настройках браузера или введите код вручную.';
-    case 'NotFoundError':
-      return 'Камера не найдена. Убедитесь, что устройство имеет камеру.';
-    case 'NotReadableError':
-      return 'Камера занята другим приложением. Закройте другие приложения, использующие камеру.';
-    case 'OverconstrainedError':
-      return 'Не удалось настроить камеру. Попробуйте ввести код вручную.';
-    case 'SecurityError':
-      return 'Доступ к камере запрещён политикой безопасности. Требуется HTTPS.';
-    case 'AbortError':
-      return 'Запуск камеры был прерван.';
-    default:
-      return `Ошибка камеры: ${error.message || error.name}. Введите код вручную.`;
-  }
-}
-
-async function openQrScanner(elements, state) {
-  const modal = $('#qrScannerModal');
-  const video = $('#qrScannerVideo');
-  const canvas = $('#qrScannerCanvas');
-  const closeBtn = $('#qrScannerClose');
-  const errorEl = $('#qrScannerError');
-  const fallback = $('#qrScannerFallback');
-  const videoWrap = $('#qrScannerVideoWrap');
-  const overlay = $('#qrScannerOverlay');
-
-  if (!modal || !video || !canvas || !closeBtn) {
-    showNotice(elements.status, { type: 'error', message: 'QR сканер недоступен' });
-    return;
-  }
-
-  if (state.isScanningQr) {
-    return;
-  }
-  state.isScanningQr = true;
-
-  errorEl.style.display = 'none';
-  fallback.hidden = true;
-  videoWrap.hidden = false;
-  modal.hidden = false;
-  document.body.style.overflow = 'hidden';
-
-  let barcodeDetector = null;
-  let animationFrameId = null;
-  let stream = null;
-  let isScanning = true;
-
-  const cleanup = () => {
-    isScanning = false;
-    state.isScanningQr = false;
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId);
-      animationFrameId = null;
-    }
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      stream = null;
-    }
-    video.srcObject = null;
-    modal.hidden = true;
-    document.body.style.overflow = '';
-  };
-
-  const showError = (message) => {
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-    videoWrap.hidden = true;
-    fallback.hidden = false;
-  };
-
-  const processFrame = async () => {
-    if (!isScanning || video.readyState < 2) {
-      animationFrameId = requestAnimationFrame(processFrame);
-      return;
-    }
-
-    if (typeof window.BarcodeDetector === 'function' && barcodeDetector) {
-      try {
-        const barcodes = await barcodeDetector.detect(video);
-        for (const barcode of barcodes) {
-          if (barcode.rawValue) {
-            const roomCode = parseQrData(barcode.rawValue);
-            if (roomCode) {
-              isScanning = false;
-              elements.codeInput.value = roomCode;
-              elements.codeInput.dispatchEvent(new Event('input'));
-              cleanup();
-              return;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('BarcodeDetector error:', e);
-      }
-    } else {
-      console.warn('BarcodeDetector not available. QR scanning requires Chrome/Edge.');
-    }
-
-    animationFrameId = requestAnimationFrame(processFrame);
-  };
-
-  try {
-    if (typeof window.BarcodeDetector === 'function') {
-      barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
-    }
-  } catch {
-    barcodeDetector = null;
-  }
-
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-    });
-    video.srcObject = stream;
-    await video.play();
-    animationFrameId = requestAnimationFrame(processFrame);
-  } catch (error) {
-    console.error('Camera access error:', error);
-    showError(getCameraErrorMessage(error));
-    cleanup();
-    return;
-  }
-
-  closeBtn.addEventListener('click', cleanup);
-  modal.querySelector('.modal-backdrop').addEventListener('click', cleanup);
-
-  const handleKeyDown = (event) => {
-    if (event.key === 'Escape') {
-      cleanup();
-      document.removeEventListener('keydown', handleKeyDown);
-    }
-  };
-  document.addEventListener('keydown', handleKeyDown);
-
-  modal.addEventListener('click', (event) => {
-    if (event.target === modal) {
-      cleanup();
-    }
-  });
 }
 
 async function init() {
@@ -310,7 +129,6 @@ async function init() {
     codeInput: $('#codeInput'),
     roomHint: $('#roomHint'),
     joinButton: $('#joinBtn'),
-    scanQrButton: $('#scanQrBtn'),
     fileInput: $('#fileInput'),
     dropzone: $('#dropzone'),
     sendButton: $('#sendBtn'),
@@ -345,10 +163,9 @@ async function init() {
     // Virtual file list — since FileList is read-only we manage our own array
     selectedFiles: [],
     isTransferring: false,
-    isScanningQr: false,
   };
 
-  registerServiceWorker(elements, state);
+  registerServiceWorker(elements, state, addFiles);
 
   const sender = new FileSender({
     getChannel: () => state.session?.getDataChannel(),
@@ -384,7 +201,7 @@ async function init() {
     },
   });
 
-  await processSharedFiles(elements, state);
+  await processSharedFiles(elements, state, addFiles);
 
   function resetSession() {
     state.session?.destroy();
@@ -585,7 +402,6 @@ async function init() {
   });
 
   elements.joinButton.addEventListener('click', joinRoom);
-  elements.scanQrButton?.addEventListener('click', () => openQrScanner(elements, state));
   elements.codeInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !elements.joinButton.disabled) {
       joinRoom();
@@ -776,7 +592,7 @@ async function init() {
   });
 
   const query = parseQuery();
-  const prefilledRoom = normalizeRoomCode(query.room, config.roomCodeLength);
+  const prefilledRoom = normalizeRoomCode(getRoomCodeFromQuery(query), config.roomCodeLength);
 
   elements.chunkSizeSelect.innerHTML = '';
   config.chunkSizeOptions.forEach((size, index) => {

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: twindrop-signaling
+    name: twindrop-share
     runtime: node
     plan: free
     rootDir: backend
@@ -12,3 +12,7 @@ services:
         value: production
       - key: TWINDROP_LOG_LEVEL
         value: info
+      - key: TWINDROP_FRONTEND_ORIGINS
+        value: https://t.sendcore.uz,https://twindrop.netlify.app
+      - key: TWINDROP_FRONTEND_URL
+        value: https://t.sendcore.uz

@@ -46,6 +46,16 @@ function normalizeOrigin(origin) {
   return origin.trim().replace(/\/+$/, '');
 }
 
+function isValidOrigin(origin) {
+  try {
+    const parsed = new URL(origin);
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:')
+      && parsed.origin === origin;
+  } catch {
+    return false;
+  }
+}
+
 function parseOrigins(value) {
   if (!value) {
     return [];
@@ -133,6 +143,18 @@ function loadConfig() {
     ...(frontendUrl ? [frontendUrl] : []),
     ...(!isProduction ? DEFAULT_DEV_ORIGINS : []),
   ].filter((origin, index, values) => values.indexOf(origin) === index);
+
+  if (isProduction && allowedOrigins.length === 0) {
+    throw new Error(
+      'TWINDROP_FRONTEND_ORIGINS or TWINDROP_FRONTEND_URL is required when NODE_ENV=production.',
+    );
+  }
+
+  const invalidOrigins = allowedOrigins.filter((origin) => !isValidOrigin(origin));
+
+  if (invalidOrigins.length > 0) {
+    throw new Error(`Invalid frontend origin(s): ${invalidOrigins.join(', ')}`);
+  }
 
   const config = {
     env: process.env.NODE_ENV || 'development',

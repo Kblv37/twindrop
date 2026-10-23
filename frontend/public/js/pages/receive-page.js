@@ -15,6 +15,7 @@ async function init() {
     status: $('#status'),
     downloads: $('#downloads'),
     copyButton: $('#copyCode'),
+    shareButton: $('#shareLinkBtn'),
     recvBar: $('#recvBar'),
     recvText: $('#recvText'),
     qr: $('#qr'),
@@ -162,6 +163,33 @@ async function init() {
       showNotice(elements.status, { type: 'success', message: 'Код комнаты скопирован.' });
     } catch {
       showNotice(elements.status, { type: 'warning', message: 'Не удалось скопировать автоматически.' });
+    }
+  });
+
+  elements.shareButton.addEventListener('click', async () => {
+    const link = elements.sendLink.value;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Twindrop',
+          text: `Код комнаты: ${state.code}`,
+          url: link,
+        });
+        showNotice(elements.status, { type: 'success', message: 'Ссылка отправлена.' });
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') {
+          return;
+        }
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(link);
+      showNotice(elements.status, { type: 'success', message: 'Ссылка скопирована.' });
+    } catch {
+      showNotice(elements.status, { type: 'warning', message: 'Не удалось скопировать ссылку автоматически.' });
     }
   });
 

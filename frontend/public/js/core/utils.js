@@ -47,8 +47,12 @@ export function createTransferId() {
   return window.crypto?.randomUUID?.() || `transfer-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+export function getRoomCodeFromQuery(query = {}) {
+  return query.r || query.room || '';
+}
+
 export function buildSendUrl(frontendUrl, roomCode) {
-  const url = new URL('/send.html', frontendUrl);
-  url.searchParams.set('room', roomCode);
+  const url = new URL('/s', frontendUrl);
+  url.searchParams.set('r', roomCode);
   return url.toString();
 }

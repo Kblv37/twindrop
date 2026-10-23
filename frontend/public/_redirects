@@ -1,0 +1,3 @@
+# Public short link for creating/opening a send room.
+# 200 keeps the URL in the address bar; the query string (?r=...) is preserved.
+/s /send 200
