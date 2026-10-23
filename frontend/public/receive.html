@@ -19,7 +19,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script type="module" src="/js/pages/receive-page.js"></script>
 </head>
-<body class="theme-premium">
+<body class="theme-premium page-receive">
   <div class="bg">
     <div class="bg-gradient"></div>
     <div class="bg-vignette"></div>
@@ -48,39 +48,49 @@
     <div class="wrap">
       <h1 class="page-title">Получить файл</h1>
 
-      <section class="section glass card-receive" aria-labelledby="receive-room-title">
-        <h2 id="receive-room-title" class="section-title">Комната для приёма</h2>
-        <div class="row code-qr-row">
+      <section class="section glass card-receive" aria-label="Параметры комнаты">
+        <div class="code-qr-row">
           <div class="code-col">
             <div class="label muted">Код комнаты</div>
-            <div id="code" class="code mono big">••••••</div>
-            <div class="row">
-              <button id="copyCode" class="btn gloss" type="button">Скопировать код</button>
-              <button id="shareLinkBtn" class="btn gloss" type="button">Поделиться ссылкой</button>
+            <div class="room-code-row">
+              <div id="code" class="code mono big">••••••</div>
+              <button id="copyCode" class="btn icon-btn" type="button" aria-label="Скопировать код комнаты" title="Скопировать код">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+              <button id="shareLinkBtn" class="btn icon-btn" type="button" aria-label="Поделиться ссылкой на комнату" title="Поделиться ссылкой">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="18" cy="5" r="3"></circle>
+                  <circle cx="6" cy="12" r="3"></circle>
+                  <circle cx="18" cy="19" r="3"></circle>
+                  <path d="m8.6 13.5 6.8 4"></path>
+                  <path d="m15.4 6.5-6.8 4"></path>
+                </svg>
+              </button>
             </div>
           </div>
 
           <div class="qr-col">
-            <div class="small muted">Отправитель может ввести код вручную или открыть ссылку для отправки.</div>
+            <p class="small muted qr-hint">Отправитель может ввести код вручную или открыть ссылку для отправки.</p>
             <div class="qr-frame">
               <div id="qr" class="qr" role="img" aria-label="QR-код для подключения"></div>
             </div>
-          </div>
-        </div>
-
-        <span id="copyLinkStatus" class="visually-hidden" role="status" aria-live="polite"></span>
-
-        <div class="share-link-block">
-          <label class="small muted share-link-label" for="sendLink">Ссылка для отправителя</label>
-          <div class="share-link-row">
-            <input id="sendLink" class="input mono" readonly aria-label="Ссылка для отправки файла">
-            <button id="copyLink" class="btn copy-link-btn" type="button" aria-label="Скопировать ссылку на комнату" title="Скопировать ссылку">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="9" y="9" width="13" height="13" rx="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              <span class="copy-link-label">Копировать</span>
-            </button>
+            <span id="copyLinkStatus" class="visually-hidden" role="status" aria-live="polite"></span>
+            <div class="share-link-block">
+              <label class="small muted share-link-label" for="sendLink">Ссылка для отправителя</label>
+              <div class="share-link-row">
+                <input id="sendLink" class="input mono" readonly aria-label="Ссылка для отправки файла">
+                <button id="copyLink" class="btn copy-link-btn" type="button" aria-label="Скопировать ссылку на комнату" title="Скопировать ссылку">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span class="copy-link-label">Копировать</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>

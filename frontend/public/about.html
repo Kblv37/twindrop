@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="/styles.css" />
 </head>
 
-<body class="theme-premium">
+<body class="theme-premium page-about">
     <div class="bg">
         <div class="bg-gradient"></div>
         <div class="bg-vignette"></div>
@@ -65,22 +65,47 @@
 
             <section class="section glass fade-target">
                 <h2 class="section-title">Преимущества Twindrop</h2>
-                <div class="row">
-                    <div class="glass" style="flex:1">
-                        <h3 class="small upper muted">🔒 Безопасность</h3>
+                <div class="about-features">
+                    <article class="feature-card">
+                        <div class="feature-heading">
+                            <span class="feature-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 3 4.5 6v5.5c0 4.5 3.2 7.7 7.5 9.5 4.3-1.8 7.5-5 7.5-9.5V6L12 3Z"></path>
+                                    <path d="m9 12 2 2 4-4"></path>
+                                </svg>
+                            </span>
+                            <h3>Безопасность</h3>
+                        </div>
                         <p>Файлы доступны только отправителю и получателю. Канал передачи зашифрован на уровне WebRTC.
                         </p>
-                    </div>
-                    <div class="glass" style="flex:1">
-                        <h3 class="small upper muted">⚡ Скорость</h3>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-heading">
+                            <span class="feature-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"></path>
+                                </svg>
+                            </span>
+                            <h3>Скорость</h3>
+                        </div>
                         <p>Напрямую, без «облачных» задержек. Меньше посредников — выше пропускная способность и
                             стабильность.</p>
-                    </div>
-                    <div class="glass" style="flex:1">
-                        <h3 class="small upper muted">🕶 Анонимность</h3>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-heading">
+                            <span class="feature-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m3 3 18 18"></path>
+                                    <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path>
+                                    <path d="M9.9 5.2A10.4 10.4 0 0 1 12 5c5.5 0 9 5.2 9 7 0 .8-.5 1.8-1.4 2.8"></path>
+                                    <path d="M6.1 6.1C4.2 7.5 3 9.1 3 12c0 1.8 3.5 7 9 7 1.3 0 2.5-.3 3.5-.8"></path>
+                                </svg>
+                            </span>
+                            <h3>Анонимность</h3>
+                        </div>
                         <p>Нет аккаунтов и логов содержимого. Сигналинг — минимальный и технический, только для
                             установления связи.</p>
-                    </div>
+                    </article>
                 </div>
             </section>
 
@@ -108,7 +133,15 @@
                         размер чанка.</li>
                 </ul>
 
-                <h3 class="small upper muted">⚙️ Выбор скорости передачи и размера чанка</h3>
+                <h3 class="small upper muted about-subheading">
+                    <span class="inline-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.1.4.3.7.6 1 .3.3.7.4 1.1.4H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51.6Z"></path>
+                        </svg>
+                    </span>
+                    Выбор скорости передачи и размера чанка
+                </h3>
                 <p>
                     При отправке файла Twindrop позволяет выбрать размер чанка — фрагмента файла, который передаётся за
                     один раз.<br>
@@ -144,7 +177,14 @@
                 </p>
 
                 <p>
-                    💡 <i>Совет:</i> если передача не удалась или файл повреждён — выберите меньший размер чанка и
+                    <span class="inline-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 18h6"></path>
+                            <path d="M10 22h4"></path>
+                            <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"></path>
+                        </svg>
+                    </span>
+                    <i>Совет:</i> если передача не удалась или файл повреждён — выберите меньший размер чанка и
                     повторите отправку.<br>
                     Если сеть стабильная и устройство справляется — можно увеличить размер для ускорения процесса.
                 </p>
@@ -241,28 +281,17 @@
 
             </section>
 
-            <section class="section glass fade-target">
-                <h2 class="section-title">Контакты</h2>
-                <p>Для связи, предложений и вопросов:</p>
-                <div class="social">
-                    <a class="social-btn ripple" href="https://t.me/h4tenigg4s" target="_blank" rel="noopener"
-                        aria-label="Telegram @h4tenigg4s" data-tooltip="Telegram">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                                d="M9.04 15.02 8.9 19.2c.41 0 .6-.18.82-.4l1.96-1.88 4.06 2.98c.75.41 1.28.2 1.49-.7l2.7-12.64c.24-1.1-.42-1.53-1.13-1.26L3.6 10.1c-1.08.42-1.06 1.02-.18 1.29l4.36 1.36 10.11-6.37c.48-.3.92-.14.56.16" />
-                        </svg>
-                    </a>
-                    <a class="social-btn ripple" href="https://x.com/kblv37" target="_blank" rel="noopener"
-                        aria-label="Twitter X @kblv37" data-tooltip="X / Twitter">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M18 3h3l-7.5 8.6L22 21h-6l-4.5-5.6L6 21H3l7.9-9.1L2 3h6l4.1 5.3L18 3z" />
-                        </svg>
-                    </a>
-                    <a class="social-btn ripple" href="https://www.linkedin.com/in/jahongir-qobilov-76a742275"
-                        target="_blank" rel="noopener" aria-label="LinkedIn" data-tooltip="LinkedIn">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                                d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM0 8h5v16H0V8zm7.5 0H12v2.2h.06c.63-1.2 2.18-2.46 4.49-2.46 4.8 0 5.68 3.16 5.68 7.26V24h-5v-6.93c0-1.65-.03-3.77-2.3-3.77-2.3 0-2.65 1.79-2.65 3.64V24h-5V8z" />
+            <section class="section glass about-portfolio fade-target" aria-labelledby="portfolio-title">
+                <div class="portfolio-card">
+                    <div class="portfolio-info">
+                        <h2 id="portfolio-title" class="portfolio-name">Jahongir</h2>
+                        <p class="portfolio-subtitle">Портфолио и проекты</p>
+                    </div>
+                    <a class="portfolio-link" href="https://jahongirdev.uz" target="_blank" rel="noopener noreferrer">
+                        jahongirdev.uz
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M7 17 17 7"></path>
+                            <path d="M8 7h9v9"></path>
                         </svg>
                     </a>
                 </div>
