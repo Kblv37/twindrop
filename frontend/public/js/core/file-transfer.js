@@ -39,6 +39,16 @@ function isValidTransferId(value) {
   return typeof value === 'string' && value.length >= 8 && value.length <= 128;
 }
 
+function createAbortError() {
+  return new DOMException('Передача отменена.', 'AbortError');
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) {
+    throw createAbortError();
+  }
+}
+
 export class FileSender {
   constructor({
     getChannel,
@@ -46,12 +56,18 @@ export class FileSender {
     maxFilesPerTransfer,
     onProgress,
     onRemoteProgress,
+    onFileStart,
+    onFileComplete,
+    onAllComplete,
   }) {
     this.getChannel = getChannel;
     this.maxFileSizeBytes = maxFileSizeBytes;
     this.maxFilesPerTransfer = maxFilesPerTransfer;
     this.onProgress = onProgress;
     this.onRemoteProgress = onRemoteProgress;
+    this.onFileStart = onFileStart;
+    this.onFileComplete = onFileComplete;
+    this.onAllComplete = onAllComplete;
   }
 
   validateFiles(files) {
@@ -74,29 +90,48 @@ export class FileSender {
     }
   }
 
-  async waitForWritable(channel, timeoutMs = 15000) {
+  async waitForWritable(channel, timeoutMs = 15000, signal) {
+    throwIfAborted(signal);
+
     if (channel.bufferedAmount <= channel.bufferedAmountLowThreshold) {
       return;
     }
 
     await new Promise((resolve, reject) => {
-      const timer = window.setTimeout(() => {
+      const cleanup = () => {
+        window.clearTimeout(timer);
         channel.removeEventListener('bufferedamountlow', handleLow);
+        signal?.removeEventListener('abort', handleAbort);
+      };
+
+      const timer = window.setTimeout(() => {
+        cleanup();
         reject(new Error('data-channel-backpressure-timeout'));
       }, timeoutMs);
 
       const handleLow = () => {
-        window.clearTimeout(timer);
-        channel.removeEventListener('bufferedamountlow', handleLow);
+        cleanup();
         resolve();
       };
 
+      const handleAbort = () => {
+        cleanup();
+        reject(createAbortError());
+      };
+
       channel.addEventListener('bufferedamountlow', handleLow, { once: true });
+      signal?.addEventListener('abort', handleAbort, { once: true });
     });
   }
 
   sendControlMessage(channel, payload) {
-    channel.send(JSON.stringify(payload));
+    try {
+      if (channel?.readyState === 'open') {
+        channel.send(JSON.stringify(payload));
+      }
+    } catch {
+      // A closing data channel should not mask the original transfer error.
+    }
   }
 
   handleData(data) {
@@ -147,8 +182,9 @@ export class FileSender {
     }
   }
 
-  async sendFiles(files, chunkSize) {
+  async sendFiles(files, chunkSize, { signal } = {}) {
     this.validateFiles(files);
+    throwIfAborted(signal);
 
     const channel = this.getChannel();
 
@@ -157,13 +193,26 @@ export class FileSender {
     }
 
     channel.bufferedAmountLowThreshold = Math.max(256 * 1024, chunkSize * 2);
+    const fileCount = files.length;
 
-    for (const file of files) {
+    for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
+      throwIfAborted(signal);
+
+      const file = files[fileIndex];
       const transferId = createTransferId();
       const fileName = sanitizeFileName(file.name);
       let sentBytes = 0;
 
       const sha256 = await computeFileSha256(file);
+      throwIfAborted(signal);
+
+      this.onFileStart?.({
+        transferId,
+        fileName,
+        fileSize: file.size,
+        fileIndex,
+        fileCount,
+      });
 
       this.sendControlMessage(channel, {
         type: CONTROL_TYPES.META,
@@ -177,21 +226,27 @@ export class FileSender {
 
       try {
         for (let offset = 0; offset < file.size; offset += chunkSize) {
+          throwIfAborted(signal);
+
           const slice = file.slice(offset, offset + chunkSize);
           const buffer = await slice.arrayBuffer();
+          throwIfAborted(signal);
 
           if (channel.readyState !== 'open') {
             throw new Error('data-channel-closed');
           }
 
-          await this.waitForWritable(channel);
+          await this.waitForWritable(channel, 15000, signal);
           channel.send(buffer);
           sentBytes += buffer.byteLength;
 
           this.onProgress?.({
+            transferId,
             fileName,
             sentBytes,
             totalBytes: file.size,
+            fileIndex,
+            fileCount,
           });
 
           if ((offset / chunkSize) % 8 === 0) {
@@ -202,7 +257,9 @@ export class FileSender {
         this.sendControlMessage(channel, {
           type: CONTROL_TYPES.ERROR,
           transferId,
-          message: 'Передача файла была прервана.',
+          message: error?.name === 'AbortError'
+            ? 'Передача отменена отправителем.'
+            : 'Передача файла была прервана.',
         });
         throw error;
       }
@@ -211,7 +268,17 @@ export class FileSender {
         type: CONTROL_TYPES.COMPLETE,
         transferId,
       });
+
+      this.onFileComplete?.({
+        transferId,
+        fileName,
+        fileSize: file.size,
+        fileIndex,
+        fileCount,
+      });
     }
+
+    this.onAllComplete?.({ fileCount });
   }
 }
 
@@ -220,12 +287,14 @@ export class FileReceiver {
     sendControl,
     maxFileSizeBytes,
     onProgress,
+    onTransferStart,
     onTransferReady,
     onError,
   }) {
     this.sendControl = sendControl;
     this.maxFileSizeBytes = maxFileSizeBytes;
     this.onProgress = onProgress;
+    this.onTransferStart = onTransferStart;
     this.onTransferReady = onTransferReady;
     this.onError = onError;
     this.activeTransfer = null;
@@ -235,9 +304,15 @@ export class FileReceiver {
     this.activeTransfer = null;
   }
 
-  failTransfer(message) {
-    this.resetActiveTransfer();
-    this.onError?.(new Error(message));
+  failTransfer(message, transfer = this.activeTransfer) {
+    if (!transfer || this.activeTransfer === transfer) {
+      this.resetActiveTransfer();
+    }
+    this.onError?.(new Error(message), {
+      transferId: transfer?.transferId || '',
+      fileName: transfer?.fileName || '',
+      fileSize: transfer?.fileSize || 0,
+    });
   }
 
   handleMeta(message) {
@@ -271,24 +346,33 @@ export class FileReceiver {
       nextProgressThreshold: 256 * 1024,
     };
 
-    this.onProgress?.({
+    this.onTransferStart?.({
+      transferId: this.activeTransfer.transferId,
       fileName,
+      fileSize,
+      mimeType: this.activeTransfer.mimeType,
+    });
+
+    this.onProgress?.({
+      transferId: this.activeTransfer.transferId,
+      fileName,
+      mimeType: this.activeTransfer.mimeType,
       receivedBytes: 0,
       totalBytes: fileSize,
     });
   }
 
-  async finalizeTransfer(message) {
-    if (!this.activeTransfer || !isValidTransferId(message.transferId) || message.transferId !== this.activeTransfer.transferId) {
+  async finalizeTransfer(transfer) {
+    if (!transfer || !isValidTransferId(transfer.transferId)) {
       return;
     }
 
-    if (this.activeTransfer.receivedBytes !== this.activeTransfer.fileSize) {
-      this.failTransfer('Передача завершилась раньше, чем файл был получен полностью.');
+    if (transfer.receivedBytes !== transfer.fileSize) {
+      this.failTransfer('Передача завершилась раньше, чем файл был получен полностью.', transfer);
       return;
     }
 
-    const blob = new Blob(this.activeTransfer.chunks, { type: this.activeTransfer.mimeType });
+    const blob = new Blob(transfer.chunks, { type: transfer.mimeType });
 
     let receivedBuffer;
     let receivedSha256;
@@ -296,44 +380,44 @@ export class FileReceiver {
       receivedBuffer = await blob.arrayBuffer();
       receivedSha256 = await computeSha256(receivedBuffer);
     } catch (error) {
-      this.activeTransfer.chunks = [];
+      transfer.chunks = [];
       this.sendControl?.({
         type: CONTROL_TYPES.ERROR,
-        transferId: this.activeTransfer.transferId,
+        transferId: transfer.transferId,
         message: 'Ошибка при проверке целостности файла.',
       });
-      this.failTransfer('Ошибка при проверке целостности файла.');
+      this.failTransfer('Ошибка при проверке целостности файла.', transfer);
       return;
     }
 
-    if (receivedSha256 !== this.activeTransfer.sha256) {
-      this.activeTransfer.chunks = [];
+    if (receivedSha256 !== transfer.sha256) {
+      transfer.chunks = [];
       this.sendControl?.({
         type: CONTROL_TYPES.ERROR,
-        transferId: this.activeTransfer.transferId,
+        transferId: transfer.transferId,
         message: 'Проверка целостности не пройдена. Полученный файл отличается от исходного.',
       });
-      this.failTransfer('Проверка целостности не пройдена. Полученный файл отличается от исходного.');
+      this.failTransfer('Проверка целостности не пройдена. Полученный файл отличается от исходного.', transfer);
       return;
     }
 
     this.onTransferReady?.({
-      fileName: this.activeTransfer.fileName,
-      fileSize: this.activeTransfer.fileSize,
+      transferId: transfer.transferId,
+      fileName: transfer.fileName,
+      fileSize: transfer.fileSize,
+      mimeType: transfer.mimeType,
       blob,
       href: URL.createObjectURL(blob),
     });
 
     this.sendControl?.({
       type: CONTROL_TYPES.COMPLETE_ACK,
-      transferId: this.activeTransfer.transferId,
-      fileName: this.activeTransfer.fileName,
-      totalBytes: this.activeTransfer.fileSize,
-      sha256: this.activeTransfer.sha256,
+      transferId: transfer.transferId,
+      fileName: transfer.fileName,
+      totalBytes: transfer.fileSize,
+      sha256: transfer.sha256,
       integrity: 'verified',
     });
-
-    this.resetActiveTransfer();
   }
 
   handleChunk(buffer) {
@@ -358,7 +442,9 @@ export class FileReceiver {
     this.activeTransfer.receivedBytes = nextSize;
 
     this.onProgress?.({
+      transferId: this.activeTransfer.transferId,
       fileName: this.activeTransfer.fileName,
+      mimeType: this.activeTransfer.mimeType,
       receivedBytes: this.activeTransfer.receivedBytes,
       totalBytes: this.activeTransfer.fileSize,
     });
@@ -387,15 +473,22 @@ export class FileReceiver {
     }
 
     if (controlMessage?.type === CONTROL_TYPES.COMPLETE) {
-      this.finalizeTransfer(controlMessage).catch((error) => {
-        console.error('Ошибка при завершении передачи:', error);
-        this.failTransfer('Внутренняя ошибка при проверке целостности.');
-      });
+      if (this.activeTransfer && controlMessage.transferId === this.activeTransfer.transferId) {
+        const transfer = this.activeTransfer;
+        // Free the receiver for the next metadata/chunks while the completed file is verified.
+        this.activeTransfer = null;
+        this.finalizeTransfer(transfer).catch((error) => {
+          console.error('Ошибка при завершении передачи:', error);
+          this.failTransfer('Внутренняя ошибка при проверке целостности.', transfer);
+        });
+      }
       return;
     }
 
     if (controlMessage?.type === CONTROL_TYPES.ERROR) {
-      this.failTransfer(controlMessage.message || 'Отправитель прервал передачу.');
+      if (this.activeTransfer && controlMessage.transferId === this.activeTransfer.transferId) {
+        this.failTransfer(controlMessage.message || 'Отправитель прервал передачу.');
+      }
       return;
     }
 

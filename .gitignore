@@ -3,3 +3,8 @@ node_modules/
 twindrop.txt
 README.md
 .kiro/
+docs/
+netlify.toml
+ins.md
+migration.md
+.vscode/

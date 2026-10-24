@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.socket.io; connect-src 'self' https: wss:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.socket.io; connect-src 'self' https: wss:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
   <meta name="description" content="Twindrop — безопасная P2P-передача файлов прямо в браузере.">
   <title>Twindrop — Выбор действия</title>
   <link rel="icon" type="image/png" sizes="64x64" href="/images/icon64.ico">
@@ -17,7 +17,7 @@
   <script src="/app-config.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
-<body class="theme-premium">
+<body class="theme-premium page-home">
   <div class="bg">
     <div class="bg-gradient"></div>
     <div class="bg-vignette"></div>
@@ -27,43 +27,78 @@
   <header class="app-header" role="banner" aria-label="Навигация Twindrop">
     <div class="header-inner container">
       <h1><a class="brand" href="/" aria-label="Twindrop — на главную">Twindrop</a></h1>
+      <nav class="nav home-nav" aria-label="Справка">
+        <a class="home-help-btn" href="/about" aria-label="О проекте и справка" title="О проекте">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 11v5"></path>
+            <path d="M12 8h.01"></path>
+          </svg>
+        </a>
+      </nav>
     </div>
     <div class="hairline"></div>
   </header>
 
   <main class="app-main container" role="main">
-    <div class="wrap home-wrap">
-      <section class="hero" aria-labelledby="home-title">
-        <h2 id="home-title" class="hero-title">Twindrop</h2>
-        <p class="hero-subtitle">Лёгкая и безопасная P2P-передача файлов прямо в браузере. Без регистрации, облаков и посредников.</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary btn-lg" href="/s">Отправить</a>
-          <a class="btn btn-secondary btn-lg" href="/r">Получить</a>
+    <div class="home-layout">
+      <section class="home-hero" aria-labelledby="home-title">
+        <div class="hero-emblem" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 14h17a4 4 0 0 1 4 4v1"></path>
+            <path d="m26 9 5 5-5 5"></path>
+            <path d="M31 26H14a4 4 0 0 1-4-4v-1"></path>
+            <path d="m14 31-5-5 5-5"></path>
+          </svg>
         </div>
+        <h2 id="home-title" class="home-title">Twindrop</h2>
+        <p class="home-subtitle">Быстрая и безопасная передача файлов между устройствами</p>
       </section>
 
-      <a class="info-card" href="/about" aria-labelledby="info-card-title">
-        <div class="info-card-heading">
-          <span class="info-card-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="9"></circle>
-              <path d="M12 11v5"></path>
-              <path d="M12 8h.01"></path>
+      <section class="home-actions" aria-label="Начните передачу файлов">
+        <a class="action-card action-card--primary" href="/r" aria-labelledby="action-create-title" aria-describedby="action-create-desc">
+          <span class="action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.4"></rect>
+              <rect x="14" y="3" width="7" height="7" rx="1.4"></rect>
+              <rect x="3" y="14" width="7" height="7" rx="1.4"></rect>
+              <path d="M14 14h3v3h-3z"></path>
+              <path d="M20 14h1"></path>
+              <path d="M20 18v2h-2"></path>
+              <path d="M14 20h1"></path>
             </svg>
           </span>
-          <h2 id="info-card-title" class="info-card-title">Что такое Twindrop</h2>
-          <span class="info-card-arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M7 17 17 7"></path>
-              <path d="M8 7h9v9"></path>
+          <span class="action-eyebrow">Для получателя</span>
+          <h3 id="action-create-title" class="action-title">Создать комнату</h3>
+          <p id="action-create-desc" class="action-desc">Получите QR-код или 6-значный код комнаты и передайте его собеседнику.</p>
+          <span class="action-cta btn btn-primary btn-lg">
+            Создать комнату
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"></path>
+              <path d="m13 6 6 6-6 6"></path>
             </svg>
           </span>
-        </div>
-        <div class="info-card-body">
-          <p>Twindrop — это лёгкий и элегантный сервис P2P-обмена файлами прямо в браузере. Ни регистрации, ни облаков, ни посредников. Только вы, получатель и защищённый канал по WebRTC.</p>
-          <p>Мы спроектировали Twindrop как опыт «кабельного» подключения в цифровом виде: максимально короткий путь, минимум трения, премиальное ощущение надёжности.</p>
-        </div>
-      </a>
+        </a>
+
+        <a class="action-card" href="/s" aria-labelledby="action-connect-title" aria-describedby="action-connect-desc">
+          <span class="action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.1 0l2.4-2.4a5 5 0 0 0-7.1-7.1L11 4.9"></path>
+              <path d="M14 11a5 5 0 0 0-7.1 0l-2.4 2.4a5 5 0 0 0 7.1 7.1L13 19.1"></path>
+            </svg>
+          </span>
+          <span class="action-eyebrow">Для отправителя</span>
+          <h3 id="action-connect-title" class="action-title">Подключиться</h3>
+          <p id="action-connect-desc" class="action-desc">Отсканируйте QR-код камерой телефона или введите код комнаты, чтобы начать передачу.</p>
+          <span class="action-cta btn btn-secondary btn-lg">
+            Подключиться
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"></path>
+              <path d="m13 6 6 6-6 6"></path>
+            </svg>
+          </span>
+        </a>
+      </section>
     </div>
   </main>
 

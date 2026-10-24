@@ -1,7 +1,7 @@
 const SHARE_TARGET_DB = 'twindrop-share-target';
 const SHARE_TARGET_STORE = 'files';
 const SHARE_TARGET_KEY = 'shared-files';
-const SW_VERSION = '20261023-3';
+const SW_VERSION = '20261024-2';
 const CACHE_NAME = `twindrop-${SW_VERSION}`;
 const SEND_PAGE_PATHS = new Set(['/s', '/send', '/send.html']);
 const CACHE_URLS = [

@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.socket.io https://cdnjs.cloudflare.com; connect-src 'self' https: wss:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
-  <meta name="description" content="Twindrop — безопасная P2P-передача файлов прямо в браузере.">
-  <title>Получить файл | Twindrop</title>
+  <meta name="description" content="Создайте комнату Twindrop, передайте код или ссылку второму устройству и принимайте файлы напрямую через WebRTC.">
+  <title>Создать комнату | Twindrop</title>
   <link rel="icon" type="image/png" sizes="64x64" href="/images/icon64.ico">
   <link rel="icon" type="image/png" sizes="100x100" href="/images/icon.png">
   <link rel="apple-touch-icon" sizes="512x512" href="/images/pwd.png">
@@ -19,7 +19,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script type="module" src="/js/pages/receive-page.js"></script>
 </head>
-<body class="theme-premium page-receive">
+<body class="theme-premium page-create">
   <div class="bg">
     <div class="bg-gradient"></div>
     <div class="bg-vignette"></div>
@@ -28,10 +28,10 @@
 
   <header class="app-header" role="banner" aria-label="Навигация Twindrop">
     <div class="header-inner container">
-      <h1><a class="brand" href="/">Twindrop</a></h1>
+      <h1><a class="brand" href="/" aria-label="Twindrop — на главную">Twindrop</a></h1>
       <nav class="nav" aria-label="Основная навигация">
-        <a class="nav-link" href="/s">Отправить</a>
-        <a class="nav-link active" href="/r" aria-current="page">Получить</a>
+        <a class="nav-link active" href="/r" aria-current="page">Создать</a>
+        <a class="nav-link" href="/s">Подключиться</a>
         <a class="nav-icon-link" href="/about" aria-label="О проекте" title="О проекте">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="9"></circle>
@@ -45,68 +45,282 @@
   </header>
 
   <main class="app-main container" role="main">
-    <div class="wrap">
-      <h1 class="page-title">Получить файл</h1>
+    <div class="room-page">
+      <div id="prejoinView" class="prejoin-view">
+        <header class="room-page-head">
+          <span class="room-page-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.4"></rect>
+              <rect x="14" y="3" width="7" height="7" rx="1.4"></rect>
+              <rect x="3" y="14" width="7" height="7" rx="1.4"></rect>
+              <path d="M14 14h3v3h-3z"></path>
+              <path d="M20 14h1"></path>
+              <path d="M20 18v2h-2"></path>
+              <path d="M14 20h1"></path>
+            </svg>
+          </span>
+          <p class="room-eyebrow">Приём файлов</p>
+          <h1 class="room-page-title">Создать комнату</h1>
+          <p class="room-page-subtitle">Создайте защищённую комнату и передайте код или ссылку второму устройству. Файлы пойдут напрямую между браузерами.</p>
+        </header>
 
-      <section class="section glass card-receive" aria-label="Параметры комнаты">
-        <div class="code-qr-row">
-          <div class="code-col">
-            <div class="label muted">Код комнаты</div>
-            <div class="room-code-row">
-              <div id="code" class="code mono big">••••••</div>
-              <button id="copyCode" class="btn icon-btn" type="button" aria-label="Скопировать код комнаты" title="Скопировать код">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="9" y="9" width="13" height="13" rx="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        <div id="createLanding" class="room-landing">
+          <section id="createPanel" class="room-card create-panel" aria-labelledby="create-panel-title">
+            <div class="create-panel-copy">
+              <span class="room-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 5v14"></path>
+                  <path d="M5 12h14"></path>
                 </svg>
-              </button>
-              <button id="shareLinkBtn" class="btn icon-btn" type="button" aria-label="Поделиться ссылкой на комнату" title="Поделиться ссылкой">
+              </span>
+              <div>
+                <h2 id="create-panel-title" class="room-card-title">Новая комната</h2>
+                <p class="room-card-text">Код и QR-код появятся сразу после создания. Сервер используется только для установления соединения.</p>
+              </div>
+            </div>
+            <div class="create-panel-action">
+              <button id="createRoomBtn" class="btn btn-primary btn-lg room-primary-action" type="button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <circle cx="18" cy="5" r="3"></circle>
-                  <circle cx="6" cy="12" r="3"></circle>
-                  <circle cx="18" cy="19" r="3"></circle>
-                  <path d="m8.6 13.5 6.8 4"></path>
-                  <path d="m15.4 6.5-6.8 4"></path>
+                  <path d="M5 12h14"></path>
+                  <path d="m13 6 6 6-6 6"></path>
                 </svg>
+                <span class="btn-label">Создать комнату</span>
               </button>
+              <p id="createLoading" class="room-loading" hidden role="status" aria-live="polite">
+                <span class="spinner" aria-hidden="true"></span>
+                <span>Создаём комнату на сервере…</span>
+              </p>
+              <p id="createError" class="room-inline-error" role="alert" hidden></p>
+            </div>
+          </section>
+
+          <section class="create-steps" aria-label="Как работает комната">
+            <article class="create-step">
+              <span class="create-step-number" aria-hidden="true">1</span>
+              <h2>Создайте комнату</h2>
+              <p>Получите настоящий цифровой код и QR-код для подключения.</p>
+            </article>
+            <article class="create-step">
+              <span class="create-step-number" aria-hidden="true">2</span>
+              <h2>Передайте приглашение</h2>
+              <p>Отправьте код или ссылку на устройство, с которого будут отправлены файлы.</p>
+            </article>
+            <article class="create-step">
+              <span class="create-step-number" aria-hidden="true">3</span>
+              <h2>Принимайте файлы</h2>
+              <p>После подключения второго устройства канал откроется автоматически.</p>
+            </article>
+          </section>
+        </div>
+      </div>
+
+      <section id="roomWorkspace" class="room-workspace" hidden aria-labelledby="workspaceTitle">
+        <h2 id="workspaceTitle" class="visually-hidden">Комната Twindrop</h2>
+
+        <div id="roomToolbar" class="room-toolbar" data-state="waiting">
+          <div class="room-toolbar-status">
+            <span class="conn-dot" aria-hidden="true"></span>
+            <div class="room-toolbar-copy">
+              <strong id="roomStatusTitle">Комната создана</strong>
+              <span id="roomStatusText">Ожидаем подключение второго устройства…</span>
             </div>
           </div>
+          <div class="room-toolbar-actions">
+            <button id="refreshBtn" class="btn btn-secondary room-tool-btn" type="button" title="Обновить соединение">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5"></path>
+                <path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"></path>
+              </svg>
+              <span class="tool-btn-label">Обновить соединение</span>
+              <span class="tool-btn-label-short">Обновить</span>
+            </button>
+            <button id="leaveRoomBtn" class="btn room-leave-btn" type="button" title="Закрыть комнату">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span class="tool-btn-label">Отключиться</span>
+              <span class="tool-btn-label-short">Выйти</span>
+            </button>
+            <button id="roomInfoBtn" class="room-icon-btn" type="button" aria-label="Информация о комнате" title="Информация о комнате">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 11v5"></path>
+                <path d="M12 8h.01"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
 
-          <div class="qr-col">
-            <p class="small muted qr-hint">Отправитель может ввести код вручную или открыть ссылку для отправки.</p>
-            <div class="qr-frame">
-              <div id="qr" class="qr" role="img" aria-label="QR-код для подключения"></div>
+        <div class="room-overview">
+          <section class="room-panel invite-card" aria-labelledby="inviteTitle">
+            <div class="invite-qr-wrap">
+              <div id="roomQr" class="invite-qr" role="img" aria-label="QR-код для подключения к комнате"></div>
+              <span class="invite-qr-caption">QR комнаты</span>
             </div>
-            <span id="copyLinkStatus" class="visually-hidden" role="status" aria-live="polite"></span>
-            <div class="share-link-block">
-              <label class="small muted share-link-label" for="sendLink">Ссылка для отправителя</label>
-              <div class="share-link-row">
-                <input id="sendLink" class="input mono" readonly aria-label="Ссылка для отправки файла">
-                <button id="copyLink" class="btn copy-link-btn" type="button" aria-label="Скопировать ссылку на комнату" title="Скопировать ссылку">
+            <div class="invite-copy">
+              <p class="room-eyebrow">Код комнаты</p>
+              <div class="invite-code-row">
+                <h2 id="inviteTitle" class="invite-code mono"><span id="joinedCode">000000</span></h2>
+                <button id="copyCodeBtn" class="room-copy-btn" type="button" aria-label="Скопировать код комнаты" title="Скопировать код">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="9" y="9" width="13" height="13" rx="2"></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+              </div>
+              <p class="invite-hint">Отсканируйте QR-код или поделитесь кодом со вторым устройством.</p>
+              <div class="invite-link-row">
+                <label class="visually-hidden" for="roomLink">Ссылка для подключения</label>
+                <input id="roomLink" class="input mono" type="text" readonly>
+                <button id="copyLinkBtn" class="btn copy-link-btn" type="button" aria-label="Скопировать ссылку на комнату" title="Скопировать ссылку">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10 13a5 5 0 0 0 7.1 0l2.4-2.4a5 5 0 0 0-7.1-7.1L11 4.9"></path>
+                    <path d="M14 11a5 5 0 0 0-7.1 0l-2.4 2.4a5 5 0 0 0 7.1 7.1L13 19.1"></path>
                   </svg>
                   <span class="copy-link-label">Копировать</span>
                 </button>
               </div>
             </div>
-          </div>
+          </section>
+
+          <section class="room-panel devices-panel" aria-labelledby="devicesTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="room-eyebrow">Устройства</p>
+                <h2 id="devicesTitle" class="panel-title">Подключены к комнате</h2>
+              </div>
+              <span id="deviceCounter" class="device-counter">1 из 2</span>
+            </div>
+
+            <div class="devices-grid">
+              <article class="device-card device-card--self" data-state="online" aria-label="Это устройство">
+                <span id="selfDeviceIcon" class="device-icon" aria-hidden="true"></span>
+                <div class="device-copy">
+                  <strong>Это устройство</strong>
+                  <span id="selfDeviceType" class="device-line">Компьютер</span>
+                  <span id="selfDeviceMeta" class="device-meta">Windows · Chrome</span>
+                </div>
+                <span class="device-self-badge">Вы</span>
+              </article>
+
+              <span class="device-connector" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.1 0l2.4-2.4a5 5 0 0 0-7.1-7.1L11 4.9"></path>
+                  <path d="M14 11a5 5 0 0 0-7.1 0l-2.4 2.4a5 5 0 0 0 7.1 7.1L13 19.1"></path>
+                </svg>
+              </span>
+
+              <article id="remoteDeviceCard" class="device-card" data-state="waiting" aria-label="Второе устройство">
+                <span id="remoteDeviceIcon" class="device-icon" aria-hidden="true"></span>
+                <div class="device-copy">
+                  <strong id="remoteDeviceName">Второе устройство</strong>
+                  <span id="remoteDeviceType" class="device-line">Ожидаем подключение</span>
+                  <span id="remoteDeviceMeta" class="device-meta">Данные появятся после соединения</span>
+                </div>
+                <span id="remoteDeviceStatus" class="device-online-status">
+                  <span class="device-online-dot" aria-hidden="true"></span>
+                  <span id="remoteDeviceStatusText">Не в сети</span>
+                </span>
+              </article>
+            </div>
+          </section>
         </div>
+
+        <section class="room-panel incoming-panel" aria-labelledby="incomingTitle">
+          <div class="incoming-visual">
+            <span class="incoming-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </span>
+            <div>
+              <p class="room-eyebrow">Приём файлов</p>
+              <h2 id="incomingTitle" class="incoming-title">Файлы появятся здесь</h2>
+              <p class="incoming-text">Как только второе устройство начнёт передачу, прогресс и готовые файлы отобразятся на этой странице. Приём запускается автоматически.</p>
+            </div>
+            <span id="incomingBadge" class="incoming-badge" data-state="waiting">
+              <span class="incoming-badge-dot" aria-hidden="true"></span>
+              <span id="incomingBadgeText">Ожидаем отправителя</span>
+            </span>
+          </div>
+        </section>
+
+        <section id="currentTransfer" class="room-panel current-transfer" data-state="active" hidden aria-labelledby="currentTransferTitle">
+          <div class="current-transfer-head">
+            <div id="currentFileIcon" class="current-file-icon" aria-hidden="true"></div>
+            <div class="current-file-copy">
+              <p id="currentTransferKind" class="room-eyebrow">Приём файла</p>
+              <h2 id="currentTransferTitle" class="current-file-name">Файл</h2>
+              <p id="currentTransferMeta" class="current-file-meta">Подготовка к приёму…</p>
+            </div>
+            <div class="current-transfer-actions">
+              <span id="currentTransferPercent" class="transfer-percent">0%</span>
+            </div>
+          </div>
+          <div id="currentTransferProgress" class="progress current-transfer-progress" role="progressbar" aria-label="Ход получения файла" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="currentTransferBar" class="bar"></div>
+          </div>
+          <div class="transfer-stats">
+            <div class="transfer-stat">
+              <span>Получено</span>
+              <strong id="currentTransferred">0 B</strong>
+            </div>
+            <div class="transfer-stat">
+              <span>Скорость передачи</span>
+              <strong id="currentSpeed">—</strong>
+            </div>
+            <div class="transfer-stat">
+              <span>Примерное время</span>
+              <strong id="currentEta">—</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="room-panel history-card" aria-labelledby="historyTitle">
+          <div class="history-head">
+            <div>
+              <p class="room-eyebrow">Журнал комнаты</p>
+              <h2 id="historyTitle" class="panel-title">История передачи</h2>
+            </div>
+            <button id="clearHistoryBtn" class="btn btn-secondary history-clear-btn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 6h18"></path>
+                <path d="M8 6V4h8v2"></path>
+                <path d="M19 6l-1 14H6L5 6"></path>
+                <path d="M10 11v5"></path>
+                <path d="M14 11v5"></path>
+              </svg>
+              <span>Очистить историю</span>
+            </button>
+          </div>
+
+          <div class="history-tabs" role="tablist" aria-label="Фильтр истории">
+            <button class="history-tab is-active" type="button" role="tab" aria-selected="true" data-filter="all">Все</button>
+            <button class="history-tab" type="button" role="tab" aria-selected="false" data-filter="sent">Отправленные</button>
+            <button class="history-tab" type="button" role="tab" aria-selected="false" data-filter="received">Полученные</button>
+          </div>
+
+          <div id="historyList" class="history-list" role="list" aria-live="polite"></div>
+          <div id="historyEmpty" class="history-empty">
+            <span class="history-empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M8 13h8"></path>
+                <path d="M8 17h5"></path>
+              </svg>
+            </span>
+            <strong>История пока пуста</strong>
+            <p>Полученные файлы появятся здесь вместе со статусом и возможностью скачать.</p>
+          </div>
+        </section>
       </section>
 
       <div id="status" class="section notice" style="display:none" role="status" aria-live="polite"></div>
-
-      <section class="section glass" aria-labelledby="download-title">
-        <h2 id="download-title" class="section-title">Приём файла</h2>
-        <div class="progress-wrap">
-          <div id="recvProgress" class="progress" role="progressbar" aria-label="Ход получения файла" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
-            <div id="recvBar" class="bar"></div>
-          </div>
-          <div id="recvText" class="small muted">Передача ещё не началась.</div>
-        </div>
-        <div id="downloads" class="downloads"></div>
-      </section>
     </div>
   </main>
 
@@ -115,5 +329,63 @@
       <span class="muted small">P2P-передача без хранения файлов на сервере.</span>
     </div>
   </footer>
+
+  <dialog id="confirmDialog" class="tw-dialog tw-dialog--confirm" aria-labelledby="confirmTitle">
+    <div class="tw-dialog__panel">
+      <div class="tw-dialog__body confirm-body">
+        <span class="confirm-icon" data-tone="danger" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0Z"></path>
+            <path d="M12 9v4"></path>
+            <path d="M12 17h.01"></path>
+          </svg>
+        </span>
+        <h2 id="confirmTitle" class="confirm-title">Закрыть комнату?</h2>
+        <p id="confirmMessage" class="confirm-message"></p>
+      </div>
+      <footer class="tw-dialog__footer">
+        <button id="confirmCancelBtn" class="btn btn-secondary tw-dialog-action" type="button">Нет, остаться</button>
+        <button id="confirmAcceptBtn" class="btn btn-danger tw-dialog-action" type="button">Да, закрыть</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="infoDialog" class="tw-dialog tw-dialog--info" aria-labelledby="infoTitle">
+    <div class="tw-dialog__panel">
+      <header class="tw-dialog__head">
+        <div class="tw-dialog__heading">
+          <span class="tw-dialog-step tw-dialog-step--info" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 11v5"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+          </span>
+          <div>
+            <h2 id="infoTitle" class="tw-dialog__title">О комнате</h2>
+            <p class="tw-dialog__subtitle">Параметры текущего соединения</p>
+          </div>
+        </div>
+        <button class="tw-dialog__close" type="button" data-dialog-close aria-label="Закрыть информацию о комнате" title="Закрыть">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </header>
+      <div class="tw-dialog__body">
+        <dl class="info-list">
+          <div><dt>Код комнаты</dt><dd id="infoRoomCode" class="mono">—</dd></div>
+          <div><dt>Роль</dt><dd>Получатель</dd></div>
+          <div><dt>Состояние</dt><dd id="infoConnection">—</dd></div>
+          <div><dt>Второе устройство</dt><dd id="infoPeer">Ожидаем подключение</dd></div>
+          <div><dt>Режим</dt><dd>Прямое P2P-соединение WebRTC</dd></div>
+        </dl>
+        <p class="info-note">Сервер используется только для установления соединения. Содержимое файлов передаётся напрямую между браузерами и не сохраняется на сервере.</p>
+      </div>
+    </div>
+  </dialog>
+
+  <span id="copyLinkStatus" class="visually-hidden" role="status" aria-live="polite"></span>
 </body>
 </html>
