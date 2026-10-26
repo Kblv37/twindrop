@@ -3,7 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "node scripts/write-client-config.js",
-    "build:client-config": "node scripts/write-client-config.js"
+    "dev": "vite",
+    "build": "node scripts/write-client-config.js && vite build && node scripts/stamp-service-worker.js",
+    "build:client-config": "node scripts/write-client-config.js",
+    "preview": "vite preview --port 8888 --strictPort",
+    "test:unit": "node --experimental-default-type=module --test tests/unit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.4",
+    "vue": "^3.5.44",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.1",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "vite": "^5.4.21"
   }
 }

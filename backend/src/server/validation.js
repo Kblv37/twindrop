@@ -27,6 +27,15 @@ function safeJsonByteLength(value) {
   }
 }
 
+function normalizeParticipantId(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const normalized = value.trim();
+  return /^[A-Za-z0-9_-]{8,64}$/.test(normalized) ? normalized : '';
+}
+
 function validateJoinPayload(payload, roomCodeLength) {
   if (!isPlainObject(payload)) {
     return { ok: false, error: 'invalid-payload' };
@@ -38,7 +47,14 @@ function validateJoinPayload(payload, roomCodeLength) {
     return { ok: false, error: 'invalid-room-code' };
   }
 
-  return { ok: true, value: { code } };
+  const hasParticipantId = Object.prototype.hasOwnProperty.call(payload, 'participantId');
+  const participantId = normalizeParticipantId(payload.participantId);
+
+  if (hasParticipantId && !participantId) {
+    return { ok: false, error: 'invalid-participant-id' };
+  }
+
+  return { ok: true, value: { code, participantId } };
 }
 
 function validateSignalData(signal) {
@@ -136,6 +152,7 @@ function validateSignalEnvelope(payload, { roomCodeLength, maxSignalPayloadBytes
 
 module.exports = {
   isPlainObject,
+  normalizeParticipantId,
   normalizeRoomCode,
   sanitizeDisplayText,
   validateJoinPayload,

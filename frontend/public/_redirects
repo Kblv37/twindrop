@@ -1,6 +1,13 @@
-# Public short link for creating/opening a send room.
-# 200 keeps the URL in the address bar; the query string (?r=...) is preserved.
-/s /send 200
+# SPA fallback: all client-side routes are served by the Vue application.
+/s /index.html 200
+/r /index.html 200
+/about /index.html 200
 
-# Public short link for the receive page. /receive remains available directly.
-/r /receive 200
+# Keep old public URLs working without reloading through a 404.
+/send /s 301
+/receive /r 301
+/send.html /s 301
+/receive.html /r 301
+/about.html /about 301
+
+/* /index.html 200

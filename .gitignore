@@ -1,10 +1,11 @@
 node_modules/
 .env
 twindrop.txt
-README.md
 .kiro/
 docs/
-netlify.toml
 ins.md
 migration.md
 .vscode/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/

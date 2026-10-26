@@ -96,7 +96,9 @@ function createApp({ config, roomStore, logger }) {
   });
 
   app.disable('x-powered-by');
-  app.set('trust proxy', true);
+  // Render terminates TLS in front of the service. Trust exactly one proxy hop
+  // so req.ip is not taken from a client-controlled X-Forwarded-For prefix.
+  app.set('trust proxy', 1);
 
   app.use(setSecurityHeaders);
   app.use(createCorsMiddleware(config));

@@ -16,7 +16,10 @@ class RoomStore {
 
     const room = {
       code,
-      members: new Set(),
+      // Members are keyed by a stable per-tab participant ID, not by socket ID.
+      // A reconnect or reload therefore replaces the stale socket instead of
+      // consuming a second room slot and returning room-full.
+      members: new Map(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -43,44 +46,102 @@ class RoomStore {
     return room;
   }
 
-  addMember(code, socketId) {
+  addMember(code, participantId, socketId) {
     const room = this.getRoom(code);
 
     if (!room) {
       return { ok: false, reason: 'room-not-found' };
     }
 
-    if (room.members.has(socketId)) {
+    const memberKey = participantId || socketId;
+    const existingMember = room.members.get(memberKey);
+
+    if (existingMember) {
+      const replacedSocketId = existingMember.socketId;
+
+      existingMember.socketId = socketId;
+      existingMember.updatedAt = Date.now();
       this.touch(code);
-      return { ok: true, room };
+
+      return {
+        ok: true,
+        room,
+        isNew: false,
+        replacedSocketId: replacedSocketId === socketId ? '' : replacedSocketId,
+      };
     }
 
     if (room.members.size >= this.capacity) {
       return { ok: false, reason: 'room-full' };
     }
 
-    room.members.add(socketId);
+    room.members.set(memberKey, {
+      participantId: memberKey,
+      socketId,
+      joinedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
     this.touch(code);
 
-    return { ok: true, room };
+    return {
+      ok: true,
+      room,
+      isNew: true,
+      replacedSocketId: '',
+    };
   }
 
-  removeMember(code, socketId) {
+  removeMember(code, participantId, socketId = '') {
     const room = this.getRoom(code);
 
     if (!room) {
       return { removed: false, room: null, deleted: false };
     }
 
-    const removed = room.members.delete(socketId);
+    let memberKey = participantId;
+    let member = room.members.get(memberKey);
 
-    if (!removed) {
+    // Backward compatibility for a client that joined without a participant ID.
+    if (!member && socketId) {
+      for (const [key, candidate] of room.members.entries()) {
+        if (candidate.socketId === socketId) {
+          memberKey = key;
+          member = candidate;
+          break;
+        }
+      }
+    }
+
+    if (!member) {
       return { removed: false, room, deleted: false };
     }
 
+    // The socket was already replaced by a newer connection for the same tab.
+    // Its delayed disconnect must not remove the new live member.
+    if (socketId && member.socketId !== socketId) {
+      return { removed: false, room, deleted: false, stale: true };
+    }
+
+    room.members.delete(memberKey);
     room.updatedAt = Date.now();
 
-    return { removed: true, room, deleted: false };
+    return { removed: true, room, deleted: false, member };
+  }
+
+  getMemberBySocketId(code, socketId) {
+    const room = this.getRoom(code);
+
+    if (!room) {
+      return null;
+    }
+
+    for (const member of room.members.values()) {
+      if (member.socketId === socketId) {
+        return member;
+      }
+    }
+
+    return null;
   }
 
   getPeerIds(code, excludeSocketId = null) {
@@ -90,12 +151,13 @@ class RoomStore {
       return [];
     }
 
-    return Array.from(room.members).filter((socketId) => socketId !== excludeSocketId);
+    return Array.from(room.members.values())
+      .map((member) => member.socketId)
+      .filter((socketId) => socketId !== excludeSocketId);
   }
 
   isMember(code, socketId) {
-    const room = this.getRoom(code);
-    return Boolean(room && room.members.has(socketId));
+    return Boolean(this.getMemberBySocketId(code, socketId));
   }
 
   getSize(code) {

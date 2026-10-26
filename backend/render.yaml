@@ -13,6 +13,6 @@ services:
       - key: TWINDROP_LOG_LEVEL
         value: info
       - key: TWINDROP_FRONTEND_ORIGINS
-        value: https://t.sendcore.uz,https://twindrop.netlify.app
+        value: https://t.sendcore.uz,https://twindrop.pages.dev
       - key: TWINDROP_FRONTEND_URL
         value: https://t.sendcore.uz
