@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: twindrop-share
+    name: twindrop-2uzn
     runtime: node
     plan: free
     rootDir: backend

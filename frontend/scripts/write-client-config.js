@@ -6,7 +6,7 @@ const { loadEnvFile } = require('./load-env');
 loadEnvFile();
 
 const outputPath = path.resolve(__dirname, '../public/app-config.js');
-const DEFAULT_PRODUCTION_SIGNALING_URL = 'https://twindrop-share.onrender.com';
+const DEFAULT_PRODUCTION_SIGNALING_URL = 'https://twindrop-2uzn.onrender.com';
 const DEFAULT_PRODUCTION_FRONTEND_URL = 'https://t.sendcore.uz';
 
 function normalizeUrl(value) {
